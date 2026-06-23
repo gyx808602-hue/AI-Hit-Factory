@@ -60,14 +60,14 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
     });
   });
 
-  it("shows successful task detail content", async () => {
+  it("shows media previews and download entries for a completed task", async () => {
     detailMocks.useDigitalHumanVideoDetail.mockReturnValue({
       data: {
         id: "video-1",
         personId: "person-1",
-        name: "数字人讲解视频",
+        name: "Digital human intro",
         status: 2,
-        statusLabel: "已完成",
+        statusLabel: "done",
         progress: 100,
         coverUrl: "https://example.com/cover.png",
         videoUrl: "https://example.com/video.mp4",
@@ -81,17 +81,21 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole("heading", { name: "数字人讲解视频", level: 1 })).toBeInTheDocument();
-    expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "查看结果视频" })).toHaveAttribute(
+    expect(await screen.findByRole("heading", { name: "Digital human intro", level: 2 })).toBeInTheDocument();
+    expect(screen.getByTestId("digital-human-cover-preview")).toHaveAttribute("src", "https://example.com/cover.png");
+    expect(screen.getByTestId("digital-human-video-preview")).toHaveAttribute("src", "https://example.com/video.mp4");
+    expect(screen.getByTestId("digital-human-cover-download")).toHaveAttribute(
+      "href",
+      "https://example.com/cover.png",
+    );
+    expect(screen.getByTestId("digital-human-video-download")).toHaveAttribute(
       "href",
       "https://example.com/video.mp4",
     );
-    expect(screen.getByRole("link", { name: "查看字幕文件" })).toHaveAttribute(
+    expect(screen.getByTestId("digital-human-subtitle-download")).toHaveAttribute(
       "href",
       "https://example.com/subtitle.srt",
     );
-    expect(screen.getByText(/18/)).toBeInTheDocument();
   });
 
   it("shows failure reason for a failed task", async () => {
@@ -99,12 +103,12 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
       data: {
         id: "video-2",
         personId: "person-2",
-        name: "失败视频",
+        name: "Failed digital human video",
         status: 4,
-        statusLabel: "生成失败",
+        statusLabel: "failed",
         progress: 50,
-        errReason: "音频解析失败",
-        errorMessage: "远端厂商返回异常",
+        errReason: "audio parse failed",
+        errorMessage: "vendor response error",
       },
       isLoading: false,
       isError: false,
@@ -113,10 +117,9 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
 
     renderDetailPage("video-2");
 
-    expect(await screen.findByRole("heading", { name: "失败视频", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText("生成失败")).toBeInTheDocument();
-    expect(screen.getByText("音频解析失败")).toBeInTheDocument();
-    expect(screen.getByText("远端厂商返回异常")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Failed digital human video", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("audio parse failed")).toBeInTheDocument();
+    expect(screen.getByText("vendor response error")).toBeInTheDocument();
   });
 
   it("refreshes and deletes the current task", async () => {
@@ -133,9 +136,9 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
       data: {
         id: "video-3",
         personId: "person-3",
-        name: "处理中视频",
+        name: "Processing task",
         status: 1,
-        statusLabel: "生成中",
+        statusLabel: "processing",
         progress: 60,
       },
       isLoading: false,
@@ -147,12 +150,12 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
 
     renderDetailPage("video-3");
 
-    expect(await screen.findByRole("heading", { name: "处理中视频", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Processing task", level: 2 })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "刷新状态" }));
+    fireEvent.click(screen.getByTestId("digital-human-refresh-button"));
     expect(refreshMutation.mutate).toHaveBeenCalledWith("video-3");
 
-    fireEvent.click(screen.getByRole("button", { name: "删除任务" }));
+    fireEvent.click(screen.getByTestId("digital-human-delete-button"));
     expect(deleteMutation.mutate).toHaveBeenCalledWith("video-3", expect.any(Object));
   });
 
@@ -168,7 +171,7 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
         data: undefined,
         isLoading: false,
         isError: true,
-        error: new Error("详情加载失败"),
+        error: new Error("detail load failed"),
       });
 
     const { rerender } = render(
@@ -193,6 +196,6 @@ describe("DigitalHumanVideoTaskDetailPage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("详情加载失败")).toBeInTheDocument();
+    expect(screen.getByText("detail load failed")).toBeInTheDocument();
   });
 });

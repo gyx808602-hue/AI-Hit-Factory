@@ -57,6 +57,25 @@ describe("dynamicRoutes", () => {
     expect(result.menuItems).toEqual([]);
   });
 
+  it("maps workspace task records backend component into a route and menu item", () => {
+    const routes: RouteItem[] = [
+      {
+        path: "/tasks",
+        component: "workspace/tasks/index",
+        meta: { title: "Tasks", icon: "ClipboardList" },
+      },
+    ];
+
+    const result = buildDynamicRouteState(routes);
+
+    expect(result.routes.map((route) => route.key)).toEqual(["workspace.tasks"]);
+    expect(
+      result.menuItems
+        .filter((item) => item.kind === "route")
+        .map((item) => item.route.key),
+    ).toEqual(["workspace.tasks"]);
+  });
+
   it("marks external redirects and does not register them as internal routes", () => {
     const routes: RouteItem[] = [
       {

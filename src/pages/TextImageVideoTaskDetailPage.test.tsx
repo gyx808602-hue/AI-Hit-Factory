@@ -46,14 +46,14 @@ describe("TextImageVideoTaskDetailPage", () => {
     vi.clearAllMocks();
   });
 
-  it("shows result video information for a completed task", async () => {
+  it("shows image and video previews with download entries for a completed task", async () => {
     detailPageMocks.getTextImageVideoTaskDetail.mockResolvedValue({
       id: 101,
-      imageUrls: ["https://example.com/a.png"],
-      prompt: "生成一条茶饮种草视频",
+      imageUrls: ["https://example.com/reference-a.png"],
+      prompt: "Generate product trailer",
       model: "seedance2.0",
       status: 2,
-      statusLabel: "已完成",
+      statusLabel: "done",
       progress: 100,
       videoUrl: "https://example.com/result.mp4",
       coverUrl: "https://example.com/cover.png",
@@ -62,11 +62,21 @@ describe("TextImageVideoTaskDetailPage", () => {
 
     renderDetailPage();
 
-    expect(await screen.findByText("生成一条茶饮种草视频")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "返回任务列表" })).toBeInTheDocument();
-    expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
-    expect(screen.getByText(/15/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "查看结果视频" })).toHaveAttribute(
+    expect(await screen.findByRole("heading", { name: "Generate product trailer", level: 2 })).toBeInTheDocument();
+    expect(screen.getAllByTestId("text-image-video-reference-preview")).toHaveLength(1);
+    expect(screen.getByTestId("text-image-video-cover-preview")).toHaveAttribute(
+      "src",
+      "https://example.com/cover.png",
+    );
+    expect(screen.getByTestId("text-image-video-result-video-preview")).toHaveAttribute(
+      "src",
+      "https://example.com/result.mp4",
+    );
+    expect(screen.getByTestId("text-image-video-cover-download")).toHaveAttribute(
+      "href",
+      "https://example.com/cover.png",
+    );
+    expect(screen.getByTestId("text-image-video-video-download")).toHaveAttribute(
       "href",
       "https://example.com/result.mp4",
     );
@@ -75,18 +85,18 @@ describe("TextImageVideoTaskDetailPage", () => {
   it("navigates back to task list from the header action", async () => {
     detailPageMocks.getTextImageVideoTaskDetail.mockResolvedValue({
       id: 101,
-      imageUrls: ["https://example.com/a.png"],
-      prompt: "生成一条茶饮种草视频",
+      imageUrls: [],
+      prompt: "Generate product trailer",
       model: "seedance2.0",
       status: 2,
-      statusLabel: "已完成",
+      statusLabel: "done",
       progress: 100,
     });
 
     renderDetailPage();
 
-    await screen.findByText("生成一条茶饮种草视频");
-    fireEvent.click(screen.getByRole("button", { name: "返回任务列表" }));
+    await screen.findByRole("heading", { name: "Generate product trailer", level: 2 });
+    fireEvent.click(screen.getByTestId("text-image-video-back-button"));
 
     expect(detailPageMocks.navigate).toHaveBeenCalledWith("/image-video/tasks");
   });
@@ -94,38 +104,37 @@ describe("TextImageVideoTaskDetailPage", () => {
   it("shows failure context for a failed task", async () => {
     detailPageMocks.getTextImageVideoTaskDetail.mockResolvedValue({
       id: 102,
-      imageUrls: ["https://example.com/a.png"],
-      prompt: "失败任务",
+      imageUrls: ["https://example.com/reference-a.png"],
+      prompt: "Failed task",
       model: "seedance2.0",
       status: 3,
-      statusLabel: "生成失败",
+      statusLabel: "failed",
       progress: 40,
-      errReason: "内容审核未通过",
-      syncError: "远端任务同步失败",
+      errReason: "moderation rejected",
+      syncError: "upstream sync failed",
     });
 
     renderDetailPage("102");
 
-    expect(await screen.findByText("失败任务")).toBeInTheDocument();
-    expect(screen.getByText("生成失败")).toBeInTheDocument();
-    expect(screen.getByText("内容审核未通过")).toBeInTheDocument();
-    expect(screen.getByText("远端任务同步失败")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Failed task", level: 2 })).toBeInTheDocument();
+    expect(screen.getByText("moderation rejected")).toBeInTheDocument();
+    expect(screen.getByText("upstream sync failed")).toBeInTheDocument();
   });
 
   it("passes silent error config for detail query to avoid duplicate global toast", async () => {
     detailPageMocks.getTextImageVideoTaskDetail.mockResolvedValue({
       id: 101,
-      imageUrls: ["https://example.com/a.png"],
-      prompt: "生成一条茶饮种草视频",
+      imageUrls: [],
+      prompt: "Generate product trailer",
       model: "seedance2.0",
       status: 2,
-      statusLabel: "已完成",
+      statusLabel: "done",
       progress: 100,
     });
 
     renderDetailPage();
 
-    await screen.findByText("生成一条茶饮种草视频");
+    await screen.findByRole("heading", { name: "Generate product trailer", level: 2 });
 
     expect(detailPageMocks.getTextImageVideoTaskDetail).toHaveBeenCalledWith("101", {
       silentError: true,

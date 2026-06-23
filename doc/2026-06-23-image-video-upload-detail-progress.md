@@ -242,3 +242,119 @@
 1. 创建独立分支。
 2. 提交当前工作区快照。
 3. 再继续测试优先实现统一上传体验。
+
+## 第八阶段完成：图文视频页第一轮 TDD 闭环
+
+### 已完成
+- 已先为 `src/pages/ImageVideoPage.test.tsx` 补充上传删除相关失败测试：
+  - 上传后存在受管控的图片项
+  - 删除后 UI 与提交值同步变化
+- 已完成 `src/pages/ImageVideoPage.tsx` 第一轮最小实现：
+  - 为已上传图片补删除按钮
+  - 删除时同步更新展示列表与 `formValues.imageUrls`
+  - 补充关键中文注释说明双状态同步原因
+- 已修正测试中因乱码文案导致的脆弱选择器，使断言更稳定。
+
+### 验证结果
+- 已执行：
+  - `npm test -- src/pages/ImageVideoPage.test.tsx`
+- 结果：
+  - `1 passed, 6 tests passed`
+
+### 当前判断
+- `ImageVideoPage` 已经完成了统一体验改造中的第一块最小闭环。
+- 当前还没有把上传入口整体替换成 `Upload`，但删除体验和业务值同步已经先稳住。
+- 后续可以继续在这个稳定基础上推进更多页面，而不是一次性扩大改动面。
+
+### 下一步
+1. 继续补和修 `upload-integration` 相关测试。
+2. 推进 `ProductVideoPage` 与 `ViralRemixPage` 的统一上传体验。
+
+## 第九阶段完成：商品图上传体验第二轮闭环
+
+### 已完成
+- 已为 `src/pages/upload-integration.test.tsx` 补充商品图删除相关断言：
+  - `ViralRemixPage` 上传后存在删除入口
+  - `ProductVideoPage` 上传后存在删除入口
+  - 删除后界面同步移除对应文件
+- 已完成最小实现：
+  - `src/pages/ProductVideoPage.tsx`
+    - 为已上传商品图补删除按钮
+    - 删除后同步更新当前展示列表
+  - `src/pages/ViralRemixPage.tsx`
+    - 为替换商品图补删除入口
+    - 删除时同步清空文件名与 URL
+    - 补充关键中文注释说明状态清理原因
+- 已修正集成测试中因同名文本多处展示导致的脆弱断言。
+
+### 验证结果
+- 已执行：
+  - `npm test -- src/pages/upload-integration.test.tsx`
+- 结果：
+  - `1 passed, 3 tests passed`
+
+### 当前判断
+- 现在图文视频页、商品视频页、爆款改编页都已经具备了上传后可删除的基础统一体验。
+- 下一步可以继续把重点转到详情页的图片/视频回显与下载入口统一。
+
+### 下一步
+1. 开始补详情页失败测试。
+2. 推进图文视频详情页与数字人视频详情页的预览和下载统一。
+## 第十阶段完成：详情页预览与下载统一闭环
+
+### 已完成
+- 已先补失败测试，再做最小实现，完成两页详情页的 TDD 闭环：
+  - `src/pages/TextImageVideoTaskDetailPage.test.tsx`
+  - `src/pages/DigitalHumanVideoTaskDetailPage.test.tsx`
+- 已统一 `TextImageVideoTaskDetailPage` 的详情回显体验：
+  - 参考图从“纯链接”升级为缩略图预览
+  - 封面图增加缩略图回显与下载入口
+  - 结果视频增加播放器回显与下载入口
+  - 返回按钮补充稳定测试锚点
+- 已统一 `DigitalHumanVideoTaskDetailPage` 的详情回显体验：
+  - 封面图增加缩略图回显与下载入口
+  - 结果视频增加播放器回显与下载入口
+  - 字幕文件增加明确下载入口
+  - 刷新、删除、返回按钮补充稳定测试锚点
+- 已补充关键中文注释，重点说明：
+  - 为什么详情页直接回显媒体资源可以减少用户跳转
+  - 为什么下载入口需要和预览区域放在一起
+
+### 验证结果
+- 已执行：
+  - `npm test -- src/pages/TextImageVideoTaskDetailPage.test.tsx`
+  - `npm test -- src/pages/DigitalHumanVideoTaskDetailPage.test.tsx`
+- 结果：
+  - `TextImageVideoTaskDetailPage`: `4 passed`
+  - `DigitalHumanVideoTaskDetailPage`: `4 passed`
+
+### 当前判断
+- 这一轮已经把“详情页图片/视频回显 + 下载入口统一”稳定住了。
+- 当前统一的是用户体验层，没有改动接口契约和后端字段结构，风险可控。
+
+### 下一步
+1. 回看是否还需要把同类详情页继续统一到 `VideoRemixTaskDetailPage` / 其他任务详情页。
+2. 视需要再推进上传入口从原生 `input` 进一步统一到 `antd Upload`。
+
+## 第十一阶段完成：提交前回归阻塞修正
+
+### 已完成
+- 已定位当前阻塞提交的问题不是运行时代码缺陷，而是 `src/pages/ImageVideoPage.test.tsx` 仍在断言旧版界面区块：
+  - `视频风格`
+  - `输出方式`
+  - `自动配音`
+  - `自动字幕`
+  - `添加 BGM`
+- 已按当前页面真实结构做最小风险修正，没有为了“迁就测试”反向恢复已经收敛掉的界面：
+  - 保留页面标题、任务列表入口、主题输入、视频预览断言
+  - 新增当前有效的三种输入方式断言
+  - 保留上传输入节点断言，继续覆盖上传入口存在性
+- 本轮修正只调整测试期望，不改接口契约、不改页面业务流程，风险最低。
+
+### 当前判断
+- 这次阻塞属于“测试陈旧”而不是“功能回退”。
+- 先把测试对齐真实页面，是提交前最稳妥的处理方式，避免把已经确认要隐藏的区块重新带回页面。
+
+### 下一步
+1. 执行整组回归测试，确认上传体验、详情回显下载、路由恢复没有联动回归。
+2. 回归全绿后，统一提交当前本地改动。

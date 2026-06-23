@@ -76,7 +76,16 @@ describe("upload integrations", () => {
       expect(uploadMocks.uploadImage).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText("product.png")).toBeInTheDocument();
+    expect(screen.getAllByText("product.png").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: /删除商品图-product\.png/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /删除商品图-product\.png/i }),
+    );
+
+    expect(screen.queryAllByText("product.png")).toHaveLength(0);
   });
 
   it("uploads images in image video page and renders uploaded file names", async () => {
@@ -129,6 +138,13 @@ describe("upload integrations", () => {
       expect(uploadMocks.uploadImage).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText("cup.png")).toBeInTheDocument();
+    expect(screen.getAllByText("cup.png").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: /删除商品图-cup\.png/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /删除商品图-cup\.png/i }));
+
+    expect(screen.queryAllByText("cup.png")).toHaveLength(0);
   });
 });

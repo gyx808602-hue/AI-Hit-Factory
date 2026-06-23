@@ -67,11 +67,10 @@ describe("ImageVideoPage", () => {
     expect(screen.getByText("图文生成视频")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "查看任务列表" })).toBeInTheDocument();
     expect(screen.getByLabelText(/视频主题/i)).toBeInTheDocument();
-    expect(screen.getAllByText("视频风格").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("输出方式").length).toBeGreaterThan(0);
-    expect(screen.getByText("自动配音")).toBeInTheDocument();
-    expect(screen.getByText("自动字幕")).toBeInTheDocument();
-    expect(screen.getByText("添加 BGM")).toBeInTheDocument();
+    expect(screen.getByText("文字输入")).toBeInTheDocument();
+    expect(screen.getByText("图片上传")).toBeInTheDocument();
+    expect(screen.getByText("图文混合")).toBeInTheDocument();
+    expect(screen.getByTestId("image-video-upload-input")).toBeInTheDocument();
     expect(screen.getByText("视频预览")).toBeInTheDocument();
   });
 
@@ -103,6 +102,74 @@ describe("ImageVideoPage", () => {
     });
 
     expect(pageMocks.navigate).toHaveBeenCalledWith("/image-video/tasks/101");
+  });
+
+  it("renders uploaded images as managed upload items", async () => {
+    pageMocks.uploadImage
+      .mockResolvedValueOnce({
+        url: "https://example.com/a.png",
+        objectKey: "a.png",
+        originalFilename: "a.png",
+      })
+      .mockResolvedValueOnce({
+        url: "https://example.com/b.png",
+        objectKey: "b.png",
+        originalFilename: "b.png",
+      });
+
+    renderImageVideoPage();
+
+    fireEvent.change(screen.getByTestId("image-video-upload-input"), {
+      target: {
+        files: [
+          new File(["image-a"], "a.png", { type: "image/png" }),
+          new File(["image-b"], "b.png", { type: "image/png" }),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(pageMocks.uploadImage).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByText("a.png")).toBeInTheDocument();
+    expect(screen.getByText("b.png")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /删除图片-a\.png/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("removes deleted upload item from ui and payload", async () => {
+    renderImageVideoPage();
+
+    fireEvent.change(screen.getByTestId("image-video-upload-input"), {
+      target: {
+        files: [new File(["image"], "a.png", { type: "image/png" })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(pageMocks.uploadImage).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /删除图片-a\.png/i }));
+    fireEvent.click(screen.getByText("文字输入"));
+
+    fireEvent.change(screen.getAllByRole("textbox")[1], {
+      target: { value: "prompt text" },
+    });
+
+    fireEvent.click(screen.getAllByRole("button").at(-1)!);
+
+    await waitFor(() => {
+      expect(pageMocks.createTextImageVideoTask).toHaveBeenCalled();
+    });
+
+    expect(pageMocks.createTextImageVideoTask).toHaveBeenCalledWith({
+      imageUrls: [],
+      prompt: "prompt text",
+      model: "seedance2.0",
+    });
   });
 
   it("navigates to task list from the header action", () => {

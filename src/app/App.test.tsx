@@ -94,6 +94,19 @@ describe("App auth routing", () => {
     expect(menuApiMock.getCurrentUserRoutes).not.toHaveBeenCalled();
   });
 
+  it("uses fallback routes for task records when dynamic menu routes are disabled", async () => {
+    vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
+    AuthStorage.setAccessToken("access-token");
+
+    renderApp(["/tasks"]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/任务记录/i)).toBeInTheDocument();
+    });
+
+    expect(menuApiMock.getCurrentUserRoutes).not.toHaveBeenCalled();
+  });
+
   it("keeps the task list menu selected when opening image video task detail", async () => {
     vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
     AuthStorage.setAccessToken("access-token");

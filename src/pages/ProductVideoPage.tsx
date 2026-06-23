@@ -44,6 +44,12 @@ export function ProductVideoPage() {
     }
   }
 
+  function handleRemoveProductImage(url: string) {
+    // 删除商品图时同步更新当前展示列表，
+    // 保证页面上的素材反馈和真实可用素材保持一致。
+    setUploadedProductImages((current) => current.filter((item) => item.url !== url));
+  }
+
   const next = () => setStep((value) => Math.min(3, value + 1) as Step);
   const prev = () => setStep((value) => Math.max(0, value - 1) as Step);
 
@@ -129,9 +135,17 @@ export function ProductVideoPage() {
                   {uploadedProductImages.map((item) => (
                     <div
                       key={item.url}
-                      className="flex h-12 w-12 items-center justify-center rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] px-1 text-[10px] text-[var(--text-secondary)]"
+                      className="relative flex h-12 w-12 items-center justify-center rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] px-1 text-[10px] text-[var(--text-secondary)]"
                     >
                       {item.name}
+                      <button
+                        type="button"
+                        aria-label={`删除商品图-${item.name}`}
+                        className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-black/65 text-[10px] text-white transition hover:bg-black/80"
+                        onClick={() => handleRemoveProductImage(item.url)}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                   <label className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-dashed border-[var(--line-subtle)]">

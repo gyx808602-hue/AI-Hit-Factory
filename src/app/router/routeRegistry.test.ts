@@ -56,6 +56,16 @@ describe("routeRegistry", () => {
     expect(taskDetailRoute.meta.hideInMenu).toBe(true);
   });
 
+  it("registers workspace routes for task records and asset library", () => {
+    const taskRecordsRoute = getRouteByKey("workspace.tasks");
+    const assetLibraryRoute = getRouteByKey("workspace.assets");
+
+    expect(taskRecordsRoute.path).toBe("/tasks");
+    expect(taskRecordsRoute.meta.hideInMenu).not.toBe(true);
+    expect(assetLibraryRoute.path).toBe("/assets");
+    expect(assetLibraryRoute.meta.hideInMenu).not.toBe(true);
+  });
+
   it("uses lazy page components so routes can be split into chunks", () => {
     expect(routeRegistry.every((route) => route.component.$$typeof)).toBe(true);
   });

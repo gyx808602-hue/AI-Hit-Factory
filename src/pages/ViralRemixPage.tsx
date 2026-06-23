@@ -95,6 +95,13 @@ export function ViralRemixPage() {
     return false;
   }
 
+  function handleRemoveReplaceProductImage() {
+    // 删除时同步清空文件名和 URL，
+    // 避免界面删掉后后续任务仍继续引用旧商品图。
+    setReplaceProductImageName(null);
+    setReplaceProductImageUrl("");
+  }
+
   return (
     <PageShell title="爆款视频改编" description="分析爆款结构，先创建持久化任务，再进入详情页继续编辑、生成与回看。">
       {actionError ? (
@@ -241,6 +248,19 @@ export function ViralRemixPage() {
                     ) : null}
                   </div>
                 </Upload.Dragger>
+                {replaceProductImageName ? (
+                  <div className="flex items-center justify-between rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] px-3 py-2">
+                    <span className="text-[12px] text-[var(--text-secondary)]">{replaceProductImageName}</span>
+                    <button
+                      type="button"
+                      aria-label={`删除商品图-${replaceProductImageName}`}
+                      className="rounded-full bg-black/65 px-2 py-1 text-[11px] text-white transition hover:bg-black/80"
+                      onClick={handleRemoveReplaceProductImage}
+                    >
+                      删除
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

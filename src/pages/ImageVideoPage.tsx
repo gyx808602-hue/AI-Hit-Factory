@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   Play,
   Plus,
+  Trash2,
   Type,
   Wand2,
 } from 'lucide-react'
@@ -29,6 +30,23 @@ type UploadedImage = {
 }
 
 const VIDEO_STYLES = ['种草', '测评', '温情', '促销', '专业'] as const
+const VIDEO_TYPES = [
+  {
+    value: 'text',
+    label: '文字输入',
+    icon: <Type size={14} />,
+  },
+  {
+    value: 'image',
+    label: '图片上传',
+    icon: <ImageIcon size={14} />,
+  },
+  {
+    value: 'mixed',
+    label: '图文混合',
+    icon: <LayoutGrid size={14} />,
+  },
+] as const
 
 const OUTPUT_MODE_OPTIONS: Array<{
   value: OutputMode
@@ -130,6 +148,16 @@ export function ImageVideoPage() {
     }
   }
 
+  function handleRemoveImage(url: string) {
+    // 删除图片时要同时同步展示列表和表单真实值，
+    // 否则界面看起来删掉了，但提交给后端的 imageUrls 仍会残留。
+    setUploadedImages((current) => current.filter((item) => item.url !== url))
+    setFormValues((current) => ({
+      ...current,
+      imageUrls: current.imageUrls.filter((item) => item !== url),
+    }))
+  }
+
   function validateForm() {
     const nextErrors: { prompt?: string; imageUrls?: string } = {}
 
@@ -180,7 +208,7 @@ export function ImageVideoPage() {
                 <label className="mb-2 block text-[13px] text-[var(--text-secondary)]">
                   输入方式
                 </label>
-                <Segmented
+                {/* <Segmented
                   block
                   value={inputMode}
                   options={[
@@ -201,7 +229,32 @@ export function ImageVideoPage() {
                     },
                   ]}
                   onChange={(value) => setInputMode(value as InputMode)}
-                />
+                /> */}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {VIDEO_TYPES.map((style) => {
+                  const active = inputMode === style.value
+
+                  return (
+                    <button
+                      key={style.value}
+                      type="button"
+                      className="rounded-xl border px-4 py-2 text-[13px] transition"
+                      style={{
+                        borderColor: active
+                          ? 'rgba(34,211,238,0.45)'
+                          : 'var(--line-subtle)',
+                        background: active
+                          ? 'rgba(34,211,238,0.16)'
+                          : 'var(--muted-bg)',
+                        color: active ? '#22D3EE' : 'var(--text-secondary)',
+                      }}
+                      onClick={() => setInputMode(style.value)}
+                    >
+                      {style.label}
+                    </button>
+                  )
+                })}
               </div>
 
               <div>
@@ -275,6 +328,14 @@ export function ImageVideoPage() {
                         <span className="line-clamp-2 text-[11px] text-[var(--text-secondary)]">
                           {item.name}
                         </span>
+                        <button
+                          type="button"
+                          aria-label={`删除图片-${item.name}`}
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-black/70"
+                          onClick={() => handleRemoveImage(item.url)}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     ))}
                     <label className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border border-dashed border-[var(--line-subtle)] bg-[var(--muted-bg)] text-[var(--text-muted)] transition hover:border-[#22D3EE]/40 hover:text-[#22D3EE]">
@@ -306,7 +367,7 @@ export function ImageVideoPage() {
                 </div>
               )}
 
-              <div>
+              {/* <div>
                 <label className="mb-2 block text-[13px] text-[var(--text-secondary)]">
                   视频风格 <span className="text-[#EF4444]">*</span>
                 </label>
@@ -335,9 +396,9 @@ export function ImageVideoPage() {
                     )
                   })}
                 </div>
-              </div>
+              </div> */}
 
-              <div>
+              {/* <div>
                 <label className="mb-2 block text-[13px] text-[var(--text-secondary)]">
                   输出方式 <span className="text-[#EF4444]">*</span>
                 </label>
@@ -386,10 +447,10 @@ export function ImageVideoPage() {
                       </button>
                     )
                   })}
-                </div>
-              </div>
+                </div> 
+              </div>*/}
 
-              <div className="grid gap-3 md:grid-cols-3">
+              {/* <div className="grid gap-3 md:grid-cols-3">
                 {OPTION_LABELS.map((option) => (
                   <div
                     key={option.key}
@@ -407,7 +468,7 @@ export function ImageVideoPage() {
                     />
                   </div>
                 ))}
-              </div>
+              </div> */}
 
               {createTaskMutation.error ? (
                 <Alert
@@ -484,7 +545,7 @@ export function ImageVideoPage() {
               )}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-[var(--line-subtle)] bg-[var(--muted-bg)] p-4">
+            {/* <div className="mt-4 rounded-2xl border border-[var(--line-subtle)] bg-[var(--muted-bg)] p-4">
               <div className="text-[12px] text-[var(--text-secondary)]">
                 当前配置
               </div>
@@ -512,7 +573,7 @@ export function ImageVideoPage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </aside>
       </div>
