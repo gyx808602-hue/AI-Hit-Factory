@@ -358,3 +358,95 @@
 1. 接入登录页时，把 `login` 返回的 token 写入 `AuthStorage`。
 2. 接入动态菜单时，使用 `menuApi.getCurrentUserRoutes()` 映射到现有静态 route registry。
 3. 接入文图生视频真实流程时，优先使用 `customerTextImageVideoApi` 替换当前 mock 数据源。
+---
+
+## 2026-06-23 动态菜单路由 OpenSpec 创建
+
+### 已完成
+- 已检查 `/api/v1/menus/routes`：当前前端 API 层已有 `src/api/system/menus/index.ts` 中的 `getCurrentUserRoutes()`，请求路径为 `GET /api/v1/menus/routes`。
+- 当前仓库主要是前端工程，未发现后端 Controller/Service 对该接口的实现文件；本次先固定前端对接契约和任务。
+- 已根据用户提供的返回结构确认接口是偏 Youlai/Vue 风格动态路由结构，核心字段包括 `path`、`component`、`redirect`、`name`、`meta.title`、`meta.icon`、`meta.hidden`、`meta.keepAlive`、`meta.alwaysShow`、`meta.params`、`children`。
+- 已创建 OpenSpec change：`openspec/changes/connect-dynamic-menu-routes/`。
+- 已补齐并通过 OpenSpec 状态检查：
+  - `proposal.md`
+  - `design.md`
+  - `specs/dynamic-menu-routes/spec.md`
+  - `tasks.md`
+- 已明确关键安全边界：后端返回的 `component: "system/user/index"` 只能作为前端白名单映射线索，不能让 React 前端直接按该字符串动态 import 组件。
+
+### 当前判断
+- `/api/v1/menus/routes` 在前端“已有调用入口”，但还没有完成动态菜单、动态路由和刷新恢复的应用级接入。
+- 动态路由对接应采用“后端菜单元数据 + 前端静态 RouteKey/component 注册表”的模型，避免后端字符串直接控制前端组件加载。
+- 后端示例里的 `children` 为 `"string"`，真实接入时前端转换器必须做容错归一化，避免接口字段异常导致白屏。
+- 该 change 已经具备进入实现阶段的前置文档条件。
+
+### 下一步
+1. 用户确认后，可开始执行 `connect-dynamic-menu-routes`。
+2. 实现时优先修正 `src/api/system/menus/types.ts` 动态路由类型。
+3. 新增后端 `component` 到前端 `RouteKey` 的白名单映射和动态路由转换器。
+4. 用 React Query 接管 `/api/v1/menus/routes`，并接入应用初始化、侧边栏菜单和刷新恢复。
+5. 补充转换器与刷新恢复测试，最后运行 `npm run typecheck`、`npm test`、`npm run build`。
+
+---
+
+## 2026-06-23 路由守卫与登录跳转排查
+
+### 已完成
+- 已检查路由守卫实现：`src/app/router/routeGuards.ts`。
+- 已检查路由注册表和登录页：`src/app/router/routeRegistry.tsx`、`src/pages/LoginPage.tsx`。
+- 已检查应用路由入口：`src/app/App.tsx`。
+- 已检查登录失效处理：`src/utils/auth.ts`、`src/utils/request.ts`。
+- 已运行针对性测试：
+  - `npm test -- src/app/router/routeGuards.test.ts src/pages/LoginPage.test.tsx`
+  - 测试结果 2 个测试文件、6 个测试全部通过。
+
+### 当前判断
+- 当前代码里“未登录”会在 `resolveRouteAccess()` 中返回 `unauthenticated`，但 `App.tsx` 没有消费这个结果，所以受保护页面并不会因为未登录自动跳转到 `/login`。
+- 当前代码里“登录失效”会调用 `redirectToLogin()`，该函数只会清空 token 并派发 `auth:expired` 事件；当前仓库内没有发现监听该事件并执行 `navigate('/login')` 的逻辑，因此登录失效后也不会自动跳转到登录页。
+- 也就是说：目前项目已经有登录页、受保护路由元数据和登录失效事件，但“守卫判定 -> 真实跳转”这段链路还没有接上。
+
+### 下一步
+1. 在 `App.tsx` 或单独的受保护路由入口中接入 `resolveRouteAccess()`。
+2. 未登录访问 `requiresAuth: true` 路由时，跳转到 `/login?redirect=<当前路径>`。
+3. 监听 `auth:expired` 事件，收到后跳转到登录页并保留来源路径。
+4. 补充路由跳转级测试，覆盖未登录访问、登录后回跳、登录失效跳转三个场景。
+
+### 本轮补充
+- 已将“未登录访问受保护页跳转登录页”“登录失效统一跳转登录页”“登录后按 redirect 回跳”补入 `openspec/changes/connect-dynamic-menu-routes/tasks.md`。
+- 已同步把对应的测试验证任务补入 OpenSpec，避免后续实现时只修逻辑、不补跳转测试。
+
+---
+
+## 2026-06-23 登录页参考实现与本项目适配
+
+### 已完成
+- 已读取参考项目登录页目录：`F:\AAA_AI_aisperce\ai-spase\ai-application\application-digital-human\vue3-element-admin\src\views\login`。
+- 已提取参考登录页核心交互结构：品牌区、登录卡片、账号密码、验证码、记住我、忘记密码、扫码登录、统一认证入口。
+- 已按本项目技术栈重建登录页：`src/pages/LoginPage.tsx`，使用 React + TypeScript + Ant Design + TailwindCSS + lucide-react。
+- 登录页视觉已适配 AI-Hit-Factory 暗色 SaaS 工作台风格，保留紫橙品牌色、AI 内容生产平台文案和合规/权限/AI 生产卖点。
+- 已接入现有认证 API：`getCaptcha()`、`login()`，登录成功后由页面调用 `AuthStorage.setTokenPair()` 写入 token。
+- 已补充验证码服务不可用时的本地演示验证码兜底，避免无后端环境下登录页空白。
+- 已新增 `/login` 路由，并通过 `hideInMenu` 让登录页独立全屏展示，不进入工作台侧边栏菜单。
+- 已修正请求客户端默认导出类型，使 `request.get<T>()`、`request.post<T>()` 在 TypeScript 中表现为业务数据解包后的 `Promise<T>`。
+- 已新增登录页测试：`src/pages/LoginPage.test.tsx`。
+- 已补充测试环境 `window.matchMedia` mock，兼容 Ant Design 在 jsdom 下的响应式能力。
+
+### 当前判断
+- 本次没有照搬 Vue + Element Plus 代码，而是复用其成熟登录体验结构，并按当前 React 项目重新实现。
+- 登录页当前完成的是账号密码登录基础闭环；短信登录、注册、忘记密码真实流程、扫码登录和统一认证仍是后续扩展入口。
+- 登录接口层只负责请求，token 写入放在页面/会话边界处理，这样能避免 API Client 暗中修改全局状态，后续接用户状态和动态菜单时更清晰。
+
+### 验证结果
+- TDD RED：`npm test -- src/pages/LoginPage.test.tsx` 首次失败，原因是 `LoginPage` 尚不存在。
+- 登录页单测通过：`npm test -- src/pages/LoginPage.test.tsx`。
+- 路由与登录页相关测试通过：`npm test -- src/app/router/routeRegistry.test.ts src/app/router/routeGuards.test.ts src/pages/LoginPage.test.tsx`。
+- 类型检查通过：`npm run typecheck`。
+- 全量测试通过：`npm test`，6 个测试文件、15 个测试。
+- 浏览器视觉检查通过：`http://127.0.0.1:5173/login` 在桌面视口独立全屏展示，无工作台侧边栏包裹。
+- 移动端视口检查通过：`390x844` 下表单在首屏下半部可见，无文字遮挡、按钮重叠或白屏问题。
+- 生产构建通过：`npm run build`。
+
+### 下一步
+1. 启动本地 dev server，浏览器检查 `/login` 在常见窗口尺寸下的视觉效果。
+2. 后续接入真实后端后，确认验证码返回字段与统一 Result 解包是否完全一致。
+3. 在账号体系 change 中继续拆分注册、忘记密码、短信登录和微信/扫码登录真实流程。

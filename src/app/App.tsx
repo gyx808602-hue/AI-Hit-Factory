@@ -7,7 +7,11 @@ import { routeRegistry } from "./router/routeRegistry";
 import type { AppRoute } from "./router/routeTypes";
 
 function getActiveRoute(pathname: string): AppRoute {
-  return routeRegistry.find((route) => route.path === pathname) ?? routeRegistry[0];
+  return routeRegistry.find((route) => route.path === pathname) ?? getDefaultWorkspaceRoute();
+}
+
+function getDefaultWorkspaceRoute(): AppRoute {
+  return routeRegistry.find((route) => !route.meta.hideInMenu) ?? routeRegistry[0];
 }
 
 function PageFallback() {
@@ -22,6 +26,19 @@ export function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const activeRoute = getActiveRoute(location.pathname);
+  const activePage = (
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        {routeRegistry.map((route) => {
+          const Page = route.component;
+
+          return <Route key={route.key} path={route.path} element={<Page />} />;
+        })}
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
 
   return (
     <ConfigProvider
@@ -57,22 +74,16 @@ export function App() {
         },
       }}
     >
+      {activeRoute.meta.hideInMenu ? (
+        activePage
+      ) : (
       <DashboardLayout
         activeRouteKey={activeRoute.key}
         onNavigate={(route) => navigate(route.path)}
       >
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            {routeRegistry.map((route) => {
-              const Page = route.component;
-
-              return <Route key={route.key} path={route.path} element={<Page />} />;
-            })}
-            <Route path="/dashboard" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        {activePage}
       </DashboardLayout>
+      )}
     </ConfigProvider>
   );
 }

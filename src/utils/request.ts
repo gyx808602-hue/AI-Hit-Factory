@@ -134,10 +134,12 @@ export function createRequestClient(options: RequestClientOptions = {}) {
 const request = createRequestClient();
 
 export type RequestConfig = AxiosRequestConfig;
-export default request as typeof request & {
+type DataRequestClient = Omit<typeof request, "get" | "delete" | "post" | "put" | "patch"> & {
   get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
   delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
   post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
   put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
   patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
 };
+
+export default request as DataRequestClient;

@@ -1,6 +1,7 @@
 import type { LazyExoticComponent, ComponentType } from "react";
 
 export type RouteKey =
+  | "auth.login"
   | "workspace.dashboard"
   | "content.productVideo"
   | "content.imageVideo"
@@ -14,6 +15,8 @@ export type RouteMeta = {
   icon: string;
   cache?: boolean;
   permissionCode?: string;
+  hideInMenu?: boolean;
+  requiresAuth?: boolean;
 };
 
 export type AppRoute = {
