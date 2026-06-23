@@ -1,6 +1,7 @@
 import { Button, Input, Radio, Segmented, Steps, Tag } from "antd";
 import { Check, ChevronLeft, ChevronRight, Play, Plus, Sparkles, Upload, Wand2 } from "lucide-react";
 import { useState } from "react";
+import { uploadImage } from "../api/aigc/uploads";
 import { PageShell } from "../shared/components/PageShell";
 
 type Step = 0 | 1 | 2 | 3;
@@ -23,6 +24,25 @@ export function ProductVideoPage() {
   const [videoMode, setVideoMode] = useState<VideoMode>("digital-human");
   const [showResult, setShowResult] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [uploadedProductImages, setUploadedProductImages] = useState<Array<{ name: string; url: string }>>([]);
+  const [productImageUploading, setProductImageUploading] = useState(false);
+
+  async function handleProductImageUpload(files: FileList | null) {
+    if (!files?.length) {
+      return;
+    }
+
+    setProductImageUploading(true);
+    try {
+      const results = await Promise.all(Array.from(files).map((file) => uploadImage(file)));
+      setUploadedProductImages((current) => [
+        ...current,
+        ...results.map((item) => ({ name: item.originalFilename, url: item.url })),
+      ]);
+    } finally {
+      setProductImageUploading(false);
+    }
+  }
 
   const next = () => setStep((value) => Math.min(3, value + 1) as Step);
   const prev = () => setStep((value) => Math.max(0, value - 1) as Step);
@@ -102,14 +122,31 @@ export function ProductVideoPage() {
               <label className="mb-2 block text-[13px] text-[var(--text-secondary)]">商品图片</label>
               <div className="rounded-xl border-2 border-dashed border-[#7C5CFC]/30 bg-[#7C5CFC]/5 p-8 text-center">
                 <Upload size={28} className="mx-auto mb-2 text-[#7C5CFC]" />
-                <p className="text-[13px] text-[var(--text-secondary)]">点击上传商品图片</p>
+                <p className="text-[13px] text-[var(--text-secondary)]">
+                  {productImageUploading ? "上传中..." : "点击上传商品图片"}
+                </p>
                 <div className="mt-3 flex justify-center gap-2">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="h-12 w-12 rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)]" />
+                  {uploadedProductImages.map((item) => (
+                    <div
+                      key={item.url}
+                      className="flex h-12 w-12 items-center justify-center rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] px-1 text-[10px] text-[var(--text-secondary)]"
+                    >
+                      {item.name}
+                    </div>
                   ))}
-                  <button className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-[var(--line-subtle)]">
+                  <label className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-dashed border-[var(--line-subtle)]">
                     <Plus size={16} />
-                  </button>
+                    <input
+                      data-testid="product-video-image-upload-input"
+                      type="file"
+                      multiple
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleProductImageUpload(event.target.files);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             </div>

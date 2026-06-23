@@ -14,8 +14,11 @@ const backendComponentRouteKeyMap: Record<string, RouteKey> = {
   "workspace/tasks/index": "workspace.tasks",
   "content/product-video/index": "content.productVideo",
   "content/image-video/index": "content.imageVideo",
+  "content/image-video/tasks/index": "content.imageVideoTasks",
   "content/viral-remix/index": "content.viralRemix",
+  "content/viral-remix/tasks/index": "content.viralRemixTasks",
   "content/digital-humans/index": "content.digitalHumans",
+  "content/digital-human-videos/index": "content.digitalHumanVideoTasks",
 };
 
 function normalizePath(path: string | undefined) {

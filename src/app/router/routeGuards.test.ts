@@ -22,6 +22,17 @@ describe("resolveRouteAccess", () => {
     });
   });
 
+  it("allows auth routes without an access token when bypass is enabled", () => {
+    const route = getRouteByKey("workspace.dashboard");
+
+    expect(
+      resolveRouteAccess(route, {
+        hasAccessToken: false,
+        bypassTokenCheck: true,
+      }),
+    ).toEqual({ allowed: true, route });
+  });
+
   it("allows public routes without an access token", () => {
     const route = getRouteByKey("auth.login");
 

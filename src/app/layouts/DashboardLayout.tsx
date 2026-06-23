@@ -52,9 +52,9 @@ export function DashboardLayout({
           {!collapsed && (
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold leading-4 text-[var(--text-primary)]">
-                AI 鐖嗘宸ュ巶
+                AI 爆款工厂
               </div>
-              <div className="truncate text-[11px] text-[var(--text-muted)]">鍐呭鐢熶骇骞冲彴</div>
+              <div className="truncate text-[11px] text-[var(--text-muted)]">内容生产平台</div>
             </div>
           )}
         </div>
@@ -94,7 +94,7 @@ export function DashboardLayout({
             type="button"
             className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
             onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "灞曞紑渚ц竟鏍?" : "鎶樺彔渚ц竟鏍?"}
+            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
           >
             <ChevronRight
               size={14}
@@ -111,7 +111,7 @@ export function DashboardLayout({
           <button
             type="button"
             className="relative rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
-            aria-label="閫氱煡"
+            aria-label="通知"
           >
             <Bell size={16} />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
@@ -123,7 +123,7 @@ export function DashboardLayout({
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
               <User size={13} color="#fff" />
             </span>
-            <span className="hidden sm:inline">鍟嗗鐢ㄦ埛</span>
+            <span className="hidden sm:inline">商家用户</span>
           </button>
         </header>
 
