@@ -3,13 +3,13 @@ import type { PageData } from "../../shared/types";
 import type { LogPageItem, LogPageQuery, VisitOverview, VisitTrend } from "./types";
 
 export function getLogPage(params?: LogPageQuery) {
-  return request.get<PageData<LogPageItem>>("/api/v1/logs", { params });
+  return request.get<PageData<LogPageItem>>("/user-api/logs", { params });
 }
 
 export function getVisitOverview() {
-  return request.get<VisitOverview>("/api/v1/logs/analytics/overview");
+  return request.get<VisitOverview>("/user-api/logs/analytics/overview");
 }
 
 export function getVisitTrend() {
-  return request.get<VisitTrend>("/api/v1/logs/analytics/trend");
+  return request.get<VisitTrend>("/user-api/logs/analytics/trend");
 }

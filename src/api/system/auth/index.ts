@@ -1,36 +1,53 @@
 import request from "../../../utils/request";
-import { noAuth } from "../../shared/utils";
-import type { AuthenticationToken, CaptchaInfo, LoginRequest, SmsLoginRequest } from "./types";
+import { noAuth, silentError } from "../../shared/utils";
+import type {
+  AuthenticationToken,
+  CaptchaInfo,
+  ChangePasswordRequest,
+  LoginRequest,
+  SmsLoginRequest,
+} from "./types";
 
-// 获取验证码：公开接口，不需要携带 access token。
+// 验证码属于公开接口，失败时由登录页本地兜底渲染，不再触发全局错误提示。
 export function getCaptcha(): Promise<CaptchaInfo> {
-  return request.get<CaptchaInfo>("/api/v1/auth/captcha", noAuth());
+  return request.get<CaptchaInfo>("/user-api/customer/auth/captcha", {
+    ...noAuth(),
+    ...silentError(),
+  });
 }
 
-// 账号密码登录：成功后由调用方把 token 写入 AuthStorage，接口层只负责请求。
+// 账号密码登录成功后，由调用方负责处理 token 写入或首登改密分支。
 export function login(data: LoginRequest): Promise<AuthenticationToken> {
-  return request.post<AuthenticationToken>("/api/v1/auth/login", data, noAuth());
+  return request.post<AuthenticationToken>("/user-api/customer/auth/login", data, noAuth());
 }
 
-// 短信验证码登录：用于后续手机号快捷登录页面。
+// 客户首次登录或主动改密时，必须验证旧密码并确认新密码。
+export function changePassword(data: ChangePasswordRequest): Promise<void> {
+  return request.post<void>("/user-api/customer/auth/change-password", data);
+}
+
+// 短信验证码登录用于后续手机号快捷登录流程。
 export function loginBySms(data: SmsLoginRequest): Promise<AuthenticationToken> {
-  return request.post<AuthenticationToken>("/api/v1/auth/login/sms", data, noAuth());
+  return request.post<AuthenticationToken>("/user-api/customer/auth/login/sms", data, noAuth());
 }
 
-// 发送登录短信验证码，手机号作为 query 参数传给后端。
+// 发送登录短信验证码，手机号通过 query 参数传给后端。
 export function sendLoginSmsCode(mobile: string): Promise<void> {
-  return request.post<void>("/api/v1/auth/sms/code", null, { ...noAuth(), params: { mobile } });
+  return request.post<void>("/user-api/customer/auth/sms/code", null, {
+    ...noAuth(),
+    params: { mobile },
+  });
 }
 
-// 刷新令牌：当前请求层已预留过期处理，真正刷新流程接入登录状态后再串起来。
+// 刷新令牌的请求入口先保留，真正自动刷新流程后续再接入登录状态模块。
 export function refreshToken(refreshTokenValue: string): Promise<AuthenticationToken> {
-  return request.post<AuthenticationToken>("/api/v1/auth/refresh-token", null, {
+  return request.post<AuthenticationToken>("/user-api/customer/auth/refresh-token", null, {
     ...noAuth(),
     params: { refreshToken: refreshTokenValue },
   });
 }
 
-// 退出登录：服务端清理会话，前端本地 token 清理由调用方统一处理。
+// 退出登录时仅负责通知服务端，前端 token 清理由调用方统一处理。
 export function logout(): Promise<void> {
-  return request.delete<void>("/api/v1/auth/logout");
+  return request.post<void>("/user-api/customer/auth/logout");
 }

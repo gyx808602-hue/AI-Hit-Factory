@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_APP_BASE_API?: string;
+  readonly VITE_ENABLE_MENU_ROUTES?: string;
+  readonly VITE_BYPASS_TOKEN_CHECK?: string;
 }
 
 interface ImportMeta {

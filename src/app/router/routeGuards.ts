@@ -7,6 +7,7 @@ export type RouteAccessResult =
 type RouteAccessOptions = {
   allowed?: boolean;
   hasAccessToken?: boolean;
+  bypassTokenCheck?: boolean;
 };
 
 export function resolveRouteAccess(
@@ -19,8 +20,9 @@ export function resolveRouteAccess(
 
   const allowed = typeof options === "boolean" ? options : (options.allowed ?? true);
   const hasAccessToken = typeof options === "boolean" ? true : (options.hasAccessToken ?? true);
+  const bypassTokenCheck = typeof options === "boolean" ? false : (options.bypassTokenCheck ?? false);
 
-  if (route.meta.requiresAuth && !hasAccessToken) {
+  if (route.meta.requiresAuth && !hasAccessToken && !bypassTokenCheck) {
     return { allowed: false, reason: "unauthenticated" };
   }
 

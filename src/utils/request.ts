@@ -1,6 +1,7 @@
 import axios, {
   AxiosError,
   type AxiosAdapter,
+  type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
@@ -11,12 +12,29 @@ import type { ApiResult } from "../api/shared/types";
 
 export const ApiCode = {
   success: "200",
+  successAlt: "00000",
   accessTokenInvalid: "A0230",
   refreshTokenInvalid: "A0231",
   permissionDenied: "A0301",
 } as const;
 
 type NotifyError = (message: string) => void;
+
+export class RequestBusinessError<TData = unknown> extends Error {
+  code: string;
+  data: TData | undefined;
+
+  constructor(code: string, message: string, data?: TData) {
+    super(message);
+    this.name = "RequestBusinessError";
+    this.code = code;
+    this.data = data;
+  }
+}
+
+export interface RequestConfig extends AxiosRequestConfig {
+  silentError?: boolean;
+}
 
 export interface RequestClientOptions {
   adapter?: AxiosAdapter;
@@ -26,10 +44,21 @@ export interface RequestClientOptions {
   onAuthExpired?: (message?: string) => void | Promise<void>;
 }
 
+export type DataRequestClient = Omit<
+  AxiosInstance,
+  "get" | "delete" | "post" | "put" | "patch"
+> & {
+  get<T = unknown>(url: string, config?: RequestConfig): Promise<T>;
+  delete<T = unknown>(url: string, config?: RequestConfig): Promise<T>;
+  post<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T>;
+  put<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T>;
+  patch<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T>;
+};
+
 const retriedConfigs = new WeakSet<InternalAxiosRequestConfig>();
 
 function defaultNotifyError(message: string) {
-  // 这里保持请求层无 React Hook 依赖，UI 层后续可监听事件统一展示 toast。
+  // 统一派发请求错误事件，避免请求层直接依赖具体 UI 组件。
   window.dispatchEvent(new CustomEvent("request:error", { detail: { message } }));
   console.error(message);
 }
@@ -38,13 +67,25 @@ function isBinaryResponse(response: AxiosResponse) {
   return response.config.responseType === "blob" || response.config.responseType === "arraybuffer";
 }
 
+function isSuccessfulBusinessCode(code: string) {
+  return code === ApiCode.success || code === ApiCode.successAlt;
+}
+
 function getBusinessCode(data: unknown) {
   return typeof data === "object" && data !== null && "code" in data
     ? String((data as ApiResult).code)
     : "";
 }
 
-export function createRequestClient(options: RequestClientOptions = {}) {
+function shouldNotifyError(config?: AxiosRequestConfig) {
+  return !(config as RequestConfig | undefined)?.silentError;
+}
+
+function isFormDataPayload(data: unknown): data is FormData {
+  return typeof FormData !== "undefined" && data instanceof FormData;
+}
+
+export function createRequestClient(options: RequestClientOptions = {}): DataRequestClient {
   const notifyError = options.notifyError ?? defaultNotifyError;
   const getAccessToken = options.getAccessToken ?? AuthStorage.getAccessToken;
   const onAuthExpired = options.onAuthExpired ?? redirectToLogin;
@@ -59,8 +100,14 @@ export function createRequestClient(options: RequestClientOptions = {}) {
 
   client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
+    config.headers["X-Source"] = "customer";
 
-    // Swagger 中登录、验证码等公开接口用 no-auth 标记，发送前必须移除伪 Header。
+    // FormData 上传必须移除默认 JSON 头，让浏览器自动附带 multipart boundary。
+    if (isFormDataPayload(config.data)) {
+      config.headers["Content-Type"] = false;
+    }
+
+    // 公开接口通过 no-auth 标记跳过鉴权头，例如验证码和登录接口。
     if (config.headers.Authorization === "no-auth") {
       delete config.headers.Authorization;
       return config;
@@ -79,22 +126,27 @@ export function createRequestClient(options: RequestClientOptions = {}) {
         return response.data;
       }
 
-      // 后端统一 Result 包装：业务成功时只把 data 暴露给页面层。
+      // 统一解包后端 Result，业务成功时仅向页面暴露 data。
       const code = getBusinessCode(response.data);
-
-      if (code === ApiCode.success) {
+      if (isSuccessfulBusinessCode(code)) {
         return response.data.data;
       }
 
       const message = response.data?.msg || "系统出错";
-      notifyError(message);
-      return Promise.reject(new Error(message));
+      if (shouldNotifyError(response.config)) {
+        notifyError(message);
+      }
+      return Promise.reject(
+        new RequestBusinessError(code, message, response.data?.data),
+      );
     }) as never,
     async (error: AxiosError<ApiResult>) => {
       const { config, response } = error;
 
       if (!response) {
-        notifyError("网络连接失败");
+        if (shouldNotifyError(config)) {
+          notifyError("网络连接失败");
+        }
         return Promise.reject(error);
       }
 
@@ -107,7 +159,7 @@ export function createRequestClient(options: RequestClientOptions = {}) {
           return Promise.reject(new Error("Token Invalid"));
         }
 
-        // 当前阶段先预留一次重试保护，真实刷新逻辑在登录模块接入后补齐。
+        // 当前阶段仅保留一次保护性重试位，真实 refresh-token 串联后续再接入。
         retriedConfigs.add(config as InternalAxiosRequestConfig);
         await onAuthExpired("登录已过期，请重新登录");
         return Promise.reject(new Error("Token Invalid"));
@@ -119,27 +171,25 @@ export function createRequestClient(options: RequestClientOptions = {}) {
       }
 
       if (code === ApiCode.permissionDenied) {
-        notifyError(message || "权限不足");
-        return Promise.reject(new Error(message || "权限不足"));
+        const deniedMessage = message || "权限不足";
+        if (shouldNotifyError(config)) {
+          notifyError(deniedMessage);
+        }
+        return Promise.reject(new Error(deniedMessage));
       }
 
-      notifyError(message);
-      return Promise.reject(new Error(message));
+      if (shouldNotifyError(config)) {
+        notifyError(message);
+      }
+      return Promise.reject(
+        new RequestBusinessError(code, message, response.data?.data),
+      );
     },
   );
 
-  return client;
+  return client as DataRequestClient;
 }
 
 const request = createRequestClient();
-
-export type RequestConfig = AxiosRequestConfig;
-type DataRequestClient = Omit<typeof request, "get" | "delete" | "post" | "put" | "patch"> & {
-  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
-  put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
-  patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>;
-};
 
 export default request as DataRequestClient;

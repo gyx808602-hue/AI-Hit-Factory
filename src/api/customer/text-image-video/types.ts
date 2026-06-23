@@ -1,4 +1,4 @@
-import type { PageQuery } from "../../shared/types";
+import type { Id, PageData, PageQuery } from "../../shared/types";
 
 export interface TextImageVideoTaskQuery extends PageQuery {
   status?: number;
@@ -11,7 +11,7 @@ export interface TextImageVideoCreateRequest {
 }
 
 export interface TextImageVideoTask {
-  id: number;
+  id: Id;
   remoteTaskId?: number;
   externalTaskId?: string;
   imageUrls: string[];
@@ -28,3 +28,5 @@ export interface TextImageVideoTask {
   createTime?: string;
   updateTime?: string;
 }
+
+export interface TextImageVideoTaskPageResponse extends PageData<TextImageVideoTask> {}

@@ -1,3 +1,6 @@
+export * as aigcUploadApi from "./aigc/uploads";
+export * as aigcCustomisedAudioApi from "./aigc/customised-audios";
+export * as aigcVideoRemixTaskApi from "./aigc/video-remix-tasks";
 export * as authApi from "./system/auth";
 export * as configApi from "./system/configs";
 export * as customerTextImageVideoApi from "./customer/text-image-video";

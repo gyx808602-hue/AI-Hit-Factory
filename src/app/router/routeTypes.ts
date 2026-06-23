@@ -5,8 +5,15 @@ export type RouteKey =
   | "workspace.dashboard"
   | "content.productVideo"
   | "content.imageVideo"
+  | "content.imageVideoTasks"
+  | "content.imageVideoTaskDetail"
   | "content.viralRemix"
+  | "content.viralRemixTasks"
+  | "content.viralRemixTaskDetail"
   | "content.digitalHumans"
+  | "content.digitalHumanDetail"
+  | "content.digitalHumanVideoTasks"
+  | "content.digitalHumanVideoTaskDetail"
   | "workspace.tasks"
   | "workspace.assets";
 
@@ -17,6 +24,7 @@ export type RouteMeta = {
   permissionCode?: string;
   hideInMenu?: boolean;
   requiresAuth?: boolean;
+  activeMenuKey?: RouteKey;
 };
 
 export type AppRoute = {

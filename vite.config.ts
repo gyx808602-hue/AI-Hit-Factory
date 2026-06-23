@@ -40,4 +40,13 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test/setup.ts",
   },
+  server: {
+    proxy: {
+      "/api-api": {
+        target: "http://192.168.110.145:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api-api/, ""),
+      },
+    },
+  },
 });

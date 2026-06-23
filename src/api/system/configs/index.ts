@@ -3,25 +3,25 @@ import type { Id, PageData } from "../../shared/types";
 import type { ConfigForm, ConfigItem, ConfigPageQuery } from "./types";
 
 export function getConfigPage(params?: ConfigPageQuery) {
-  return request.get<PageData<ConfigItem>>("/api/v1/configs", { params });
+  return request.get<PageData<ConfigItem>>("/user-api/configs", { params });
 }
 
 export function createConfig(data: ConfigForm) {
-  return request.post<void>("/api/v1/configs", data);
+  return request.post<void>("/user-api/configs", data);
 }
 
 export function updateConfig(id: Id, data: ConfigForm) {
-  return request.put<void>(`/api/v1/configs/${id}`, data);
+  return request.put<void>(`/user-api/configs/${id}`, data);
 }
 
 export function deleteConfig(id: Id) {
-  return request.delete<void>(`/api/v1/configs/${id}`);
+  return request.delete<void>(`/user-api/configs/${id}`);
 }
 
 export function getConfigForm(id: Id) {
-  return request.get<ConfigForm>(`/api/v1/configs/${id}/form`);
+  return request.get<ConfigForm>(`/user-api/configs/${id}/form`);
 }
 
 export function refreshConfigCache() {
-  return request.put<ConfigForm>("/api/v1/configs/refresh");
+  return request.put<ConfigForm>("/user-api/configs/refresh");
 }

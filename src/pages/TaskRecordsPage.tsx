@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, Clock, Download, Play, RefreshCw, Search, XC
 import { useMemo, useState } from "react";
 import { Button, Input, Segmented, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { useNavigate } from "react-router-dom";
 import { filterTasks } from "../features/workspace/mockData";
 import { taskStatusLabels } from "../features/workspace/status";
 import type { GenerationTask, TaskFilter } from "../features/workspace/types";
@@ -18,6 +19,7 @@ const statusView = {
 };
 
 export function TaskRecordsPage() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<TaskFilter>({
     keyword: "",
     type: "全部",
@@ -93,7 +95,15 @@ export function TaskRecordsPage() {
   ];
 
   return (
-    <PageShell title="任务记录" description="查看所有视频生成任务的状态、结果和下载记录">
+    <PageShell
+      title="任务记录"
+      description="查看所有视频生成任务的状态、结果和下载记录"
+      actions={
+        <Button type="primary" onClick={() => navigate("/image-video/tasks")}>
+          文图生视频任务页
+        </Button>
+      }
+    >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="当前筛选任务" value={tasks.length} color="#E8E9F0" icon={Play} />
         <MetricCard label="生成成功" value={successCount} color="#4ADE80" icon={CheckCircle2} />

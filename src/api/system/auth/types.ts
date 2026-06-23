@@ -1,13 +1,14 @@
 export interface CaptchaInfo {
-  captchaId: string;
+  captchaId?: string;
+  captchaKey?: string;
   captchaBase64: string;
 }
 
 export interface LoginRequest {
-  username: string;
+  phone: string;
   password: string;
-  captchaId?: string;
-  captchaCode?: string;
+  captchaKey: string;
+  captchaCode: string;
 }
 
 export interface SmsLoginRequest {
@@ -20,4 +21,10 @@ export interface AuthenticationToken {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }

@@ -1,4 +1,4 @@
-import { Button, Checkbox, Form, Input } from "antd";
+import { Alert, Button, Checkbox, Form, Input } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import {
   BadgeCheck,
@@ -11,15 +11,40 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getCaptcha, login } from "../api/system/auth";
-import type { CaptchaInfo, LoginRequest } from "../api/system/auth/types";
+import { changePassword, getCaptcha, login } from "../api/system/auth";
+import type {
+  AuthenticationToken,
+  CaptchaInfo,
+  ChangePasswordRequest,
+  LoginRequest,
+} from "../api/system/auth/types";
 import { AuthStorage } from "../utils/auth";
 
 const REMEMBER_ME_KEY = "ai_hit_factory_remember_me";
 const REMEMBERED_USERNAME_KEY = "ai_hit_factory_remembered_username";
+const INITIAL_PASSWORD_CHANGE_CODE = "C10001";
 
-type LoginFormValues = LoginRequest & {
+type LoginFormValues = {
+  username: string;
+  password: string;
+  captchaKey: string;
+  captchaCode: string;
   rememberMe: boolean;
+};
+
+type ChangePasswordFormValues = ChangePasswordRequest;
+
+type PasswordResetContext = {
+  username: string;
+  tokens: AuthenticationToken;
+  message: string;
+};
+
+type InitialPasswordChangeErrorLike = {
+  code: string;
+  data: AuthenticationToken;
+  message?: string;
+  msg?: string;
 };
 
 function getRememberMe() {
@@ -41,9 +66,13 @@ function setRememberState(rememberMe: boolean, username: string) {
   window.localStorage.removeItem(REMEMBERED_USERNAME_KEY);
 }
 
+function getCaptchaKey(captcha: CaptchaInfo) {
+  return captcha.captchaKey || captcha.captchaId || "";
+}
+
 function buildFallbackCaptcha(): CaptchaInfo {
   return {
-    captchaId: "local-fallback",
+    captchaKey: "local-fallback",
     captchaBase64:
       "data:image/svg+xml;utf8," +
       encodeURIComponent(
@@ -55,36 +84,62 @@ function buildFallbackCaptcha(): CaptchaInfo {
   };
 }
 
+function isInitialPasswordChangeError(
+  error: unknown,
+): error is InitialPasswordChangeErrorLike {
+  const maybeError = error as {
+    code?: string;
+    data?: Partial<AuthenticationToken>;
+  };
+
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    "data" in error &&
+    maybeError.code === INITIAL_PASSWORD_CHANGE_CODE &&
+    typeof maybeError.data?.accessToken === "string" &&
+    typeof maybeError.data?.refreshToken === "string"
+  );
+}
+
+function getInitialPasswordChangeMessage(error: InitialPasswordChangeErrorLike) {
+  return error.message || error.msg || "请先修改初始密码";
+}
+
 export function LoginPage() {
-  const [form] = Form.useForm<LoginFormValues>();
+  const [loginForm] = Form.useForm<LoginFormValues>();
+  const [changePasswordForm] = Form.useForm<ChangePasswordFormValues>();
   const navigate = useNavigate();
   const location = useLocation();
   const [captcha, setCaptcha] = useState<CaptchaInfo>(() => buildFallbackCaptcha());
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [changePasswordSubmitting, setChangePasswordSubmitting] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [passwordResetContext, setPasswordResetContext] = useState<PasswordResetContext | null>(null);
 
   const redirectPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("redirect") || "/";
   }, [location.search]);
 
-  const initialValues = useMemo<LoginFormValues>(
+  const loginInitialValues = useMemo<LoginFormValues>(
     () => ({
       username: getRememberedUsername(),
       password: "",
-      captchaId: captcha.captchaId,
+      captchaKey: getCaptchaKey(captcha),
       captchaCode: "",
       rememberMe: getRememberMe(),
     }),
-    [captcha.captchaId],
+    [captcha],
   );
 
   async function refreshCaptcha() {
     if (!import.meta.env.VITE_APP_BASE_API) {
       const fallback = buildFallbackCaptcha();
       setCaptcha(fallback);
-      form.setFieldValue("captchaId", fallback.captchaId);
+      loginForm.setFieldValue("captchaKey", getCaptchaKey(fallback));
       return;
     }
 
@@ -92,39 +147,68 @@ export function LoginPage() {
     try {
       const nextCaptcha = await getCaptcha();
       setCaptcha(nextCaptcha);
-      form.setFieldValue("captchaId", nextCaptcha.captchaId);
+      loginForm.setFieldValue("captchaKey", getCaptchaKey(nextCaptcha));
     } catch {
       const fallback = buildFallbackCaptcha();
       setCaptcha(fallback);
-      form.setFieldValue("captchaId", fallback.captchaId);
+      loginForm.setFieldValue("captchaKey", getCaptchaKey(fallback));
     } finally {
       setCaptchaLoading(false);
     }
   }
 
-  async function handleSubmit(values: LoginFormValues) {
+  async function handleLogin(values: LoginFormValues) {
     setSubmitting(true);
     try {
       const tokens = await login({
-        username: values.username,
+        phone: values.username,
         password: values.password,
-        captchaId: captcha.captchaId,
+        captchaKey: getCaptchaKey(captcha),
         captchaCode: values.captchaCode,
-      });
+      } satisfies LoginRequest);
 
-      // token 写入属于会话边界，接口层只负责请求，避免 API Client 暗中修改全局状态。
       AuthStorage.setTokenPair(tokens);
       setRememberState(values.rememberMe, values.username);
       navigate(redirectPath, { replace: true });
-    } catch {
+    } catch (error) {
+      if (isInitialPasswordChangeError(error)) {
+        AuthStorage.setTokenPair(error.data);
+        setPasswordResetContext({
+          username: values.username,
+          tokens: error.data,
+          message: getInitialPasswordChangeMessage(error),
+        });
+        changePasswordForm.setFieldsValue({
+          oldPassword: values.password,
+          newPassword: "",
+          confirmPassword: "",
+        });
+        return;
+      }
+
       await refreshCaptcha();
     } finally {
       setSubmitting(false);
     }
   }
 
+  async function handleChangePassword(values: ChangePasswordFormValues) {
+    setChangePasswordSubmitting(true);
+    try {
+      await changePassword(values);
+      AuthStorage.clear();
+      setPasswordResetContext(null);
+      changePasswordForm.resetFields();
+      loginForm.setFieldValue("password", "");
+      loginForm.setFieldValue("captchaCode", "");
+      await refreshCaptcha();
+    } finally {
+      setChangePasswordSubmitting(false);
+    }
+  }
+
   function handleRememberChange(event: CheckboxChangeEvent) {
-    form.setFieldValue("rememberMe", event.target.checked);
+    loginForm.setFieldValue("rememberMe", event.target.checked);
   }
 
   function checkCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -185,130 +269,221 @@ export function LoginPage() {
             </div>
           </div>
 
-          <p className="m-0 text-[12px] text-[var(--text-muted)]">
-            Copyright © 2026 AI-Hit-Factory
-          </p>
+          <p className="m-0 text-[12px] text-[var(--text-muted)]">Copyright © 2026 AI-Hit-Factory</p>
         </section>
 
         <section className="flex min-h-[560px] items-center justify-center border-t border-white/10 bg-[#10111A]/95 px-5 py-10 lg:min-h-screen lg:border-l lg:border-t-0 lg:px-10">
           <div className="w-full max-w-[420px]">
             <div className="mb-7">
-              <h2 className="m-0 text-[32px] font-bold leading-10 text-white">欢迎回来</h2>
+              <h2 className="m-0 text-[32px] font-bold leading-10 text-white">
+                {passwordResetContext ? "首次登录重置密码" : "欢迎回来"}
+              </h2>
               <p className="mt-2 text-[13px] text-[var(--text-muted)]">
-                请完成身份验证后进入工作台
+                {passwordResetContext
+                  ? `账户 ${passwordResetContext.username} 需要先完成初始密码重置`
+                  : "输入账号信息，继续进入你的 AI 电商内容工作台"}
               </p>
             </div>
 
-            <Form
-              form={form}
-              layout="vertical"
-              initialValues={initialValues}
-              requiredMark={false}
-              onFinish={handleSubmit}
-            >
-              <Form.Item name="username" rules={[{ required: true, message: "请输入用户名或手机号" }]}>
-                <Input
-                  size="large"
-                  prefix={<UserRound size={16} />}
-                  placeholder="请输入用户名 / 手机号"
-                  autoComplete="username"
+            {passwordResetContext ? (
+              <>
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={passwordResetContext.message}
+                  className="mb-5"
                 />
-              </Form.Item>
 
-              <Form.Item
-                name="password"
-                rules={[
-                  { required: true, message: "请输入密码" },
-                  { min: 6, message: "密码不能少于 6 位" },
-                ]}
-                help={capsLock ? "大写锁定已开启" : undefined}
-              >
-                <Input.Password
-                  size="large"
-                  prefix={<LockKeyhole size={16} />}
-                  placeholder="请输入密码"
-                  autoComplete="current-password"
-                  onKeyUp={checkCapsLock}
-                />
-              </Form.Item>
-
-              <Form.Item name="captchaId" hidden>
-                <Input />
-              </Form.Item>
-
-              <Form.Item name="captchaCode" rules={[{ required: true, message: "请输入验证码" }]}>
-                <div className="flex gap-3">
-                  <Input
-                    size="large"
-                    placeholder="请输入验证码"
-                    className="min-w-0 flex-1"
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    className="flex h-10 w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] transition hover:border-[#7C5CFC]"
-                    onClick={() => void refreshCaptcha()}
-                    aria-label="刷新验证码"
+                <Form
+                  form={changePasswordForm}
+                  layout="vertical"
+                  requiredMark={false}
+                  onFinish={handleChangePassword}
+                >
+                  <Form.Item
+                    name="oldPassword"
+                    rules={[{ required: true, message: "请输入旧密码" }]}
                   >
-                    {captchaLoading ? (
-                      <RefreshCw size={16} className="animate-spin text-[var(--text-muted)]" />
-                    ) : (
-                      <img
-                        src={captcha.captchaBase64}
-                        alt="验证码"
-                        className="h-full w-full object-contain"
+                    <Input.Password
+                      size="large"
+                      prefix={<LockKeyhole size={16} />}
+                      placeholder="请输入旧密码"
+                      autoComplete="current-password"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="newPassword"
+                    rules={[
+                      { required: true, message: "请输入新密码" },
+                      { min: 6, message: "新密码不能少于 6 位" },
+                    ]}
+                  >
+                    <Input.Password
+                      size="large"
+                      prefix={<LockKeyhole size={16} />}
+                      placeholder="请输入新密码"
+                      autoComplete="new-password"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="confirmPassword"
+                    dependencies={["newPassword"]}
+                    rules={[
+                      { required: true, message: "请再次输入新密码" },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue("newPassword") === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error("两次输入的新密码不一致"));
+                        },
+                      }),
+                    ]}
+                  >
+                    <Input.Password
+                      size="large"
+                      prefix={<LockKeyhole size={16} />}
+                      placeholder="请再次输入新密码"
+                      autoComplete="new-password"
+                    />
+                  </Form.Item>
+
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    size="large"
+                    loading={changePasswordSubmitting}
+                    className="w-full"
+                  >
+                    确认重置密码
+                  </Button>
+                </Form>
+              </>
+            ) : (
+              <>
+                <Form
+                  form={loginForm}
+                  layout="vertical"
+                  initialValues={loginInitialValues}
+                  requiredMark={false}
+                  onFinish={handleLogin}
+                >
+                  <Form.Item
+                    name="username"
+                    rules={[{ required: true, message: "请输入用户名或手机号" }]}
+                  >
+                    <Input
+                      size="large"
+                      prefix={<UserRound size={16} />}
+                      placeholder="请输入用户名 / 手机号"
+                      autoComplete="username"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="password"
+                    rules={[
+                      { required: true, message: "请输入密码" },
+                      { min: 6, message: "密码不能少于 6 位" },
+                    ]}
+                    help={capsLock ? "大写锁定已开启" : undefined}
+                  >
+                    <Input.Password
+                      size="large"
+                      prefix={<LockKeyhole size={16} />}
+                      placeholder="请输入密码"
+                      autoComplete="current-password"
+                      onKeyUp={checkCapsLock}
+                    />
+                  </Form.Item>
+
+                  <Form.Item name="captchaKey" hidden>
+                    <Input />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="captchaCode"
+                    rules={[{ required: true, message: "请输入验证码" }]}
+                  >
+                    <div className="flex gap-3">
+                      <Input
+                        size="large"
+                        placeholder="请输入验证码"
+                        className="min-w-0 flex-1"
+                        autoComplete="off"
                       />
-                    )}
-                  </button>
+                      <button
+                        type="button"
+                        className="flex h-10 w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] transition hover:border-[#7C5CFC]"
+                        onClick={() => void refreshCaptcha()}
+                        aria-label="刷新验证码"
+                      >
+                        {captchaLoading ? (
+                          <RefreshCw
+                            size={16}
+                            className="animate-spin text-[var(--text-muted)]"
+                          />
+                        ) : (
+                          <img
+                            src={captcha.captchaBase64}
+                            alt="验证码"
+                            className="h-full w-full object-contain"
+                          />
+                        )}
+                      </button>
+                    </div>
+                  </Form.Item>
+
+                  <div className="mb-6 flex items-center justify-between text-[13px]">
+                    <Form.Item name="rememberMe" valuePropName="checked" noStyle>
+                      <Checkbox onChange={handleRememberChange}>记住我</Checkbox>
+                    </Form.Item>
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent p-0 text-[#9B7FFF] transition hover:text-[#B8A6FF]"
+                    >
+                      忘记密码？
+                    </button>
+                  </div>
+
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    size="large"
+                    loading={submitting}
+                    className="w-full"
+                  >
+                    登录
+                  </Button>
+                </Form>
+
+                <div className="mt-7">
+                  <div className="mb-4 flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
+                    <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                    其他登录方式
+                    <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--line-subtle)] bg-white/[0.02] text-[13px] text-[var(--text-secondary)] transition hover:border-[#7C5CFC] hover:text-[#9B7FFF]"
+                    >
+                      <QrCode size={16} />
+                      扫码登录
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--line-subtle)] bg-white/[0.02] text-[13px] text-[var(--text-secondary)] transition hover:border-[#7C5CFC] hover:text-[#9B7FFF]"
+                    >
+                      <ShieldCheck size={16} />
+                      统一认证
+                    </button>
+                  </div>
                 </div>
-              </Form.Item>
-
-              <div className="mb-6 flex items-center justify-between text-[13px]">
-                <Form.Item name="rememberMe" valuePropName="checked" noStyle>
-                  <Checkbox onChange={handleRememberChange}>记住我</Checkbox>
-                </Form.Item>
-                <button
-                  type="button"
-                  className="border-0 bg-transparent p-0 text-[#9B7FFF] transition hover:text-[#B8A6FF]"
-                >
-                  忘记密码？
-                </button>
-              </div>
-
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                loading={submitting}
-                className="w-full"
-              >
-                登录
-              </Button>
-            </Form>
-
-            <div className="mt-7">
-              <div className="mb-4 flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
-                <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-                其他登录方式
-                <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--line-subtle)] bg-white/[0.02] text-[13px] text-[var(--text-secondary)] transition hover:border-[#7C5CFC] hover:text-[#9B7FFF]"
-                >
-                  <QrCode size={16} />
-                  扫码登录
-                </button>
-                <button
-                  type="button"
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--line-subtle)] bg-white/[0.02] text-[13px] text-[var(--text-secondary)] transition hover:border-[#7C5CFC] hover:text-[#9B7FFF]"
-                >
-                  <ShieldCheck size={16} />
-                  统一认证
-                </button>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </section>
       </div>

@@ -1,22 +1,59 @@
-import { ConfigProvider, Spin, theme } from "antd";
+import { ConfigProvider, message, Spin, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { Suspense, useEffect, useMemo } from "react";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { matchPath, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { ForbiddenPage } from "../pages/ForbiddenPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { routeRegistry } from "./router/routeRegistry";
 import { resolveRouteAccess } from "./router/routeGuards";
 import type { AppRoute, DynamicRouteState, NavigationItem } from "./router/routeTypes";
 import { useCurrentUserRoutes } from "./router/useCurrentUserRoutes";
-import { ForbiddenPage } from "../pages/ForbiddenPage";
-import { NotFoundPage } from "../pages/NotFoundPage";
 
 function getDefaultWorkspaceRoute(routes: AppRoute[]) {
   return routes.find((route) => !route.meta.hideInMenu) ?? routes[0];
 }
 
+function resolveActiveMenuRoute(
+  currentRoute: AppRoute,
+  availableRoutes: AppRoute[],
+): AppRoute {
+  if (!currentRoute.meta.hideInMenu) {
+    return currentRoute;
+  }
+
+  if (currentRoute.meta.activeMenuKey) {
+    const matchedParentRoute = availableRoutes.find(
+      (route) => route.key === currentRoute.meta.activeMenuKey,
+    );
+
+    if (matchedParentRoute) {
+      return matchedParentRoute;
+    }
+  }
+
+  return getDefaultWorkspaceRoute(availableRoutes);
+}
+
+function dedupeRoutes(routes: AppRoute[]) {
+  const seen = new Set<string>();
+  return routes.filter((route) => {
+    if (seen.has(route.key)) {
+      return false;
+    }
+
+    seen.add(route.key);
+    return true;
+  });
+}
+
 function buildRedirectTarget(pathname: string, search: string) {
   return `${pathname}${search}`;
+}
+
+function isTokenBypassEnabled() {
+  return import.meta.env.VITE_BYPASS_TOKEN_CHECK === "true";
 }
 
 function PageFallback() {
@@ -39,7 +76,7 @@ function DynamicRouteLoading() {
 }
 
 function getActiveRoute(pathname: string, availableRoutes: AppRoute[]) {
-  return availableRoutes.find((route) => route.path === pathname);
+  return availableRoutes.find((route) => matchPath({ path: route.path, end: true }, pathname));
 }
 
 function getFallbackRouteState(): DynamicRouteState {
@@ -63,30 +100,32 @@ function getFallbackRouteState(): DynamicRouteState {
 export function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const lastRequestErrorRef = useRef<{ message: string; time: number } | null>(null);
   const hasAccessToken = Boolean(AuthStorage.getAccessToken());
-  // 公共路由在运行期不会变化，使用 useMemo 固定引用，避免每次渲染都重新筛选。
+  const bypassTokenCheck = isTokenBypassEnabled();
   const publicRoutes = useMemo(
     () => routeRegistry.filter((route) => route.meta.requiresAuth === false),
     [],
   );
-  // 动态菜单接口失败或尚未返回时，仍然需要一份受保护路由白名单参与守卫判断和兜底渲染。
+  const hiddenProtectedRoutes = useMemo(
+    () => routeRegistry.filter((route) => route.meta.requiresAuth && route.meta.hideInMenu),
+    [],
+  );
   const fallbackRouteState = useMemo(() => getFallbackRouteState(), []);
   const dynamicRoutesQuery = useCurrentUserRoutes(hasAccessToken);
   const dynamicRouteState = dynamicRoutesQuery.data ?? fallbackRouteState;
-  const availableRoutes = hasAccessToken
-    ? [...publicRoutes, ...dynamicRouteState.routes]
+  const canAccessProtectedRoutes = hasAccessToken || bypassTokenCheck;
+  const availableRoutes = canAccessProtectedRoutes
+    ? dedupeRoutes([...publicRoutes, ...dynamicRouteState.routes, ...hiddenProtectedRoutes])
     : publicRoutes;
-  // 未登录时也要拿静态受保护路由做一次候选匹配，这样访问 /assets 之类页面时才能先命中路由，再走未登录跳转，
-  // 而不是因为“当前可访问路由里没有它”直接落到 404。
-  const candidateRoutes = hasAccessToken
+  const candidateRoutes = canAccessProtectedRoutes
     ? availableRoutes
-    : [...publicRoutes, ...fallbackRouteState.routes];
+    : [...publicRoutes, ...fallbackRouteState.routes, ...hiddenProtectedRoutes];
   const activeRoute = getActiveRoute(location.pathname, candidateRoutes);
-  const routeAccess = resolveRouteAccess(activeRoute, { hasAccessToken });
+  const routeAccess = resolveRouteAccess(activeRoute, { hasAccessToken, bypassTokenCheck });
 
   useEffect(() => {
     function handleAuthExpired() {
-      // 登录失效后保留来源地址，重新登录后可以按 redirect 回到用户原本访问的页面。
       const redirect = encodeURIComponent(buildRedirectTarget(location.pathname, location.search));
       navigate(`/login?redirect=${redirect}`, { replace: true });
     }
@@ -96,6 +135,32 @@ export function App() {
       window.removeEventListener("auth:expired", handleAuthExpired);
     };
   }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    function handleRequestError(event: Event) {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      const nextMessage = detail?.message?.trim();
+      if (!nextMessage) {
+        return;
+      }
+
+      const now = Date.now();
+      const lastError = lastRequestErrorRef.current;
+
+      // 短时间内同文案只提示一次，避免全局错误事件导致 message 刷屏。
+      if (lastError && lastError.message === nextMessage && now - lastError.time < 1500) {
+        return;
+      }
+
+      lastRequestErrorRef.current = { message: nextMessage, time: now };
+      void message.error(nextMessage);
+    }
+
+    window.addEventListener("request:error", handleRequestError as EventListener);
+    return () => {
+      window.removeEventListener("request:error", handleRequestError as EventListener);
+    };
+  }, []);
 
   if (dynamicRoutesQuery.isLoading) {
     return <DynamicRouteLoading />;
@@ -115,10 +180,7 @@ export function App() {
   }
 
   const currentRoute = routeAccess.route;
-  // 隐藏路由通常不会出现在侧边栏，因此布局高亮需要回退到一个可见工作台路由。
-  const activeWorkspaceRoute = currentRoute.meta.hideInMenu
-    ? getDefaultWorkspaceRoute(dynamicRouteState.routes)
-    : currentRoute;
+  const activeWorkspaceRoute = resolveActiveMenuRoute(currentRoute, dynamicRouteState.routes);
   const activePage = (
     <Suspense fallback={<PageFallback />}>
       <Routes>
@@ -182,7 +244,7 @@ export function App() {
         },
       }}
     >
-      {currentRoute.meta.hideInMenu ? (
+      {currentRoute.meta.requiresAuth === false ? (
         activePage
       ) : (
         <DashboardLayout
