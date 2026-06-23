@@ -42,10 +42,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api-api": {
-        target: "http://192.168.110.145:8000",
+      "/api": {
+        target: "http://192.168.110.40:8000",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api-api/, ""),
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },

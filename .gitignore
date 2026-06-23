@@ -3,3 +3,4 @@ dist
 *.tsbuildinfo
 vite-dev*.log
 .playwright-mcp/
+dist.zip
