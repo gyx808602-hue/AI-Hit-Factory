@@ -160,6 +160,29 @@
 2. 若改动较大，可补充 body，说明“做了什么”“为什么这么做”“影响范围”。
 ---
 
+## 2026-06-23 Git 提交失败排查
+
+### 已完成
+- 已检查 Git 用户配置，`user.name` 和 `user.email` 均已存在，不是身份信息缺失导致。
+- 已检查 `.git/hooks`，当前只有 sample 文件，没有真实启用的提交钩子阻塞提交。
+- 已执行：
+  - `git commit --dry-run`
+  - `git diff --cached --stat`
+  - `git status --short`
+- 已确认 Git 返回结果为：
+  - `nothing to commit, working tree clean`
+
+### 当前判断
+- 当前不是“git 提交不上”，而是“当前仓库已经没有可提交的内容”。
+- Git 视角下工作区和暂存区都为空，因此执行提交时会直接拒绝生成新提交。
+- 同时当前分支状态为：`Your branch is ahead of 'origin/main' by 1 commit.`，说明你本地已经有一个尚未推送的提交。
+
+### 下一步
+1. 如果你以为自己改了代码，先确认文件是否真的保存到了当前仓库目录。
+2. 如果改动已经被提交了，需要的是 `git push`，不是再次 `git commit`。
+3. 如果你想强制制造一个空提交，只能显式执行 `git commit --allow-empty -m "..."`，但正常开发不建议这样做。
+---
+
 ## 2026-06-22 Figma UI 任务拆解补充
 
 ### 已完成
