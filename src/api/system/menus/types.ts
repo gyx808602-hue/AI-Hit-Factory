@@ -17,7 +17,7 @@ export interface RouteItem {
   redirect?: string;
   name?: string;
   meta?: RouteMeta;
-  children?: RouteItem[];
+  children?: RouteItem[] | null | unknown;
 }
 
 export interface MenuItem {

@@ -10,16 +10,16 @@ import {
   User2,
   Video,
   Zap,
-} from 'lucide-react'
-import { type ReactNode, useState } from 'react'
-import { routeRegistry } from '../router/routeRegistry'
-import type { AppRoute, RouteKey } from '../router/routeTypes'
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
+import type { NavigationItem, RouteKey } from "../router/routeTypes";
 
 type DashboardLayoutProps = {
-  activeRouteKey: RouteKey
-  children: ReactNode
-  onNavigate: (route: AppRoute) => void
-}
+  activeRouteKey: RouteKey;
+  children: ReactNode;
+  menuItems: NavigationItem[];
+  onNavigate: (item: NavigationItem) => void;
+};
 
 const iconMap = {
   LayoutDashboard,
@@ -29,14 +29,15 @@ const iconMap = {
   User2,
   ClipboardList,
   FolderOpen,
-}
+};
 
 export function DashboardLayout({
   activeRouteKey,
   children,
+  menuItems,
   onNavigate,
 }: DashboardLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen min-w-0 overflow-hidden bg-[var(--app-bg)] text-[var(--text-primary)]">
@@ -51,46 +52,40 @@ export function DashboardLayout({
           {!collapsed && (
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold leading-4 text-[var(--text-primary)]">
-                AI 爆款工厂
+                AI 鐖嗘宸ュ巶
               </div>
-              <div className="truncate text-[11px] text-[var(--text-muted)]">
-                内容生产平台
-              </div>
+              <div className="truncate text-[11px] text-[var(--text-muted)]">鍐呭鐢熶骇骞冲彴</div>
             </div>
           )}
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-          {routeRegistry
-            .filter((route) => !route.meta.hideInMenu)
-            .map((route) => {
-            const Icon =
-              iconMap[route.meta.icon as keyof typeof iconMap] ??
-              LayoutDashboard
-            const active = activeRouteKey === route.key
+          {menuItems.map((item) => {
+            const Icon = iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard;
+            const active = item.kind === "route" && activeRouteKey === item.route.key;
 
             return (
               <button
-                key={route.key}
+                key={item.key}
                 type="button"
                 className="flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition"
                 style={{
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  borderColor: active ? 'rgba(124,92,252,0.35)' : 'transparent',
-                  background: active ? 'rgba(124,92,252,0.16)' : 'transparent',
-                  color: active ? '#9B7FFF' : 'var(--text-muted)',
+                  justifyContent: collapsed ? "center" : "flex-start",
+                  borderColor: active ? "rgba(124,92,252,0.35)" : "transparent",
+                  background: active ? "rgba(124,92,252,0.16)" : "transparent",
+                  color: active ? "#9B7FFF" : "var(--text-muted)",
                 }}
-                title={collapsed ? route.meta.title : undefined}
-                onClick={() => onNavigate(route)}
+                title={collapsed ? item.title : undefined}
+                onClick={() => onNavigate(item)}
               >
                 <Icon size={16} className="shrink-0" />
                 {!collapsed && (
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                    {route.meta.title}
+                    {item.title}
                   </span>
                 )}
               </button>
-            )
+            );
           })}
         </nav>
 
@@ -99,12 +94,12 @@ export function DashboardLayout({
             type="button"
             className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
             onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+            aria-label={collapsed ? "灞曞紑渚ц竟鏍?" : "鎶樺彔渚ц竟鏍?"}
           >
             <ChevronRight
               size={14}
               style={{
-                transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
               }}
             />
           </button>
@@ -116,7 +111,7 @@ export function DashboardLayout({
           <button
             type="button"
             className="relative rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
-            aria-label="通知"
+            aria-label="閫氱煡"
           >
             <Bell size={16} />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
@@ -128,14 +123,12 @@ export function DashboardLayout({
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
               <User size={13} color="#fff" />
             </span>
-            <span className="hidden sm:inline">商家用户</span>
+            <span className="hidden sm:inline">鍟嗗鐢ㄦ埛</span>
           </button>
         </header>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          {children}
-        </main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
-  )
+  );
 }

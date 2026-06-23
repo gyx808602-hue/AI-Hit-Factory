@@ -43,6 +43,123 @@
 
 ---
 
+## 2026-06-23 环境变量排查补充
+
+### 已完成
+- 扫描仓库根目录与环境变量文件模式，当前项目内未发现任何 `.env`、`.env.local`、`.env.development`、`.env.production` 文件。
+- 确认 `VITE_APP_BASE_API` 的使用位置：
+  - `src/utils/request.ts`
+  - `src/pages/LoginPage.tsx`
+  - `src/vite-env.d.ts`
+- 确认当前代码对 `VITE_APP_BASE_API` 采用“可选兜底”策略：
+  - `request.ts` 中未配置时会回退为空字符串。
+  - `LoginPage.tsx` 中未配置时验证码会走本地 fallback。
+
+### 当前判断
+- 现在不是“找不到某个现成 env 文件”，而是这个仓库目前就还没有创建环境变量文件。
+- 这是 Vite 项目，环境变量文件应该放在仓库根目录 `F:\AAA_AI_aisperce\AI-Hit-Factory\`。
+- 如果你要本地开发联调接口，通常优先新建 `.env.development` 或 `.env.local`，并补上 `VITE_APP_BASE_API=...`。
+
+### 下一步
+1. 根据你的运行场景决定新建 `.env.development` 还是 `.env.local`。
+2. 在文件中配置 `VITE_APP_BASE_API` 指向后端网关或 API 基础地址。
+3. 重启 Vite 开发服务，确认 `import.meta.env.VITE_APP_BASE_API` 已生效。
+---
+
+## 2026-06-23 本地后端联调环境补充
+
+### 已完成
+- 已按当前 Vite 项目结构，在仓库根目录新增本地开发环境文件：
+  - `F:\AAA_AI_aisperce\AI-Hit-Factory\.env.development`
+- 已补充环境变量：
+  - `VITE_APP_BASE_API=http://127.0.0.1:8080`
+- 已确认当前仓库中没有其他后端端口约定或 dev proxy 配置，因此本次采用本地联调最常见的直连方式。
+
+### 当前判断
+- 现有前端 API 路径统一使用 `/api/v1/...`，配上 `VITE_APP_BASE_API` 后，会直接请求到 `http://127.0.0.1:8080/api/v1/...`。
+- 这种方式最简单，适合当前阶段直接联调；原理上就是把 axios 的 `baseURL` 当作“统一网关前缀”，类似前端请求拦截器里统一补域名，避免每个接口手写完整地址。
+- 如果你的后端实际运行端口不是 `8080`，后续只需要改这一行即可，不需要动接口代码。
+
+### 下一步
+1. 启动或重启前端 dev server，让 Vite 重新加载 `.env.development`。
+2. 启动后端服务，确认它实际监听地址是否为 `http://127.0.0.1:8080`。
+3. 用登录页或任一真实接口验证联调是否成功；如果失败，优先检查端口、跨域和后端网关前缀。
+---
+
+## 2026-06-23 多环境变量补齐
+
+### 已完成
+- 保留并规范化开发环境文件：
+  - `F:\AAA_AI_aisperce\AI-Hit-Factory\.env.development`
+  - 当前值：`VITE_APP_BASE_API=http://192.168.110.145:3000`
+- 新增测试环境文件：
+  - `F:\AAA_AI_aisperce\AI-Hit-Factory\.env.test`
+  - 当前值：`VITE_APP_BASE_API=http://127.0.0.1:8080`
+- 新增生产环境文件：
+  - `F:\AAA_AI_aisperce\AI-Hit-Factory\.env.production`
+  - 当前值：`VITE_APP_BASE_API=/`
+
+### 当前判断
+- `development` 环境使用局域网后端地址，适合你现在前端连接内网机器联调。
+- `test` 环境保留本机地址，适合本地测试或 CI 场景下连接本机测试服务。
+- `production` 环境使用 `/` 而不是写死域名，原理是让前端请求默认走“当前站点同域”：
+  - 如果线上是 `https://your-domain.com`，那么 `/api/v1/...` 会自动请求到 `https://your-domain.com/api/v1/...`
+  - 这样能避免把生产域名硬编码进前端包里，也更利于 Nginx / 网关转发和多环境发布。
+
+### 下一步
+1. 开发联调时继续使用 `npm run dev`，会自动读取 `.env.development`。
+2. 如果后续需要专门的预发环境，建议再补一个 `.env.staging`，不要复用 `production`。
+3. 上线前确认部署网关是否把 `/api/` 正确转发到后端服务。
+---
+
+## 2026-06-23 暂存区状态核查
+
+### 已完成
+- 已执行暂存区检查：
+  - `git diff --cached --stat`
+  - `git diff --cached --name-status`
+  - `git status --short`
+- 已确认当前暂存区为空，暂无任何已 `git add` 的变更。
+- 已识别当前仍停留在工作区的文件包括：
+  - 已修改：`.gitignore`、`doc/progress.md`、`openspec/changes/connect-dynamic-menu-routes/tasks.md`、`package.json`、`package-lock.json`、`src/app/App.tsx` 等
+  - 未跟踪：`.env.development`、`.env.test`、`.env.production`、`src/app/router/dynamicRoutes.ts` 等
+
+### 当前判断
+- 你现在要的“暂存区提交代码详细描述”在严格意义上还不存在，因为暂存区里没有内容。
+- 当前仓库里有不少“工作区变更”，但它们还没有进入暂存区，所以不能当作本次待提交内容来精确描述。
+
+### 下一步
+1. 如果你要我描述“准备提交的代码”，先把目标文件 `git add` 到暂存区。
+2. 或者我也可以直接基于当前工作区变更，先给你一份“未暂存代码变更说明”。
+---
+
+## 2026-06-23 工作区变更说明整理
+
+### 已完成
+- 已基于当前工作区改动整理提交说明素材，覆盖动态菜单路由接入、React Query 初始化、多环境变量补齐和测试补充。
+- 已确认本轮说明基于“当前工作区变更”而非暂存区，因为暂存区仍为空。
+
+### 当前判断
+- 当前这批改动已经具备一版完整的中文提交说明条件，适合直接用于 commit message 扩展描述、PR 描述或变更汇报。
+
+### 下一步
+1. 若你执行 `git add`，可再生成一版严格对应暂存区的提交说明。
+2. 若你需要英文版或 Conventional Commits 风格，我可以继续补。
+---
+
+## 2026-06-23 提交规范补充
+
+### 已完成
+- 已整理当前项目适合采用的规范化 Git 提交格式，准备输出可直接复用的 commit message 模板与本次改动示例。
+
+### 当前判断
+- 当前这批改动更适合使用 `Conventional Commits` 风格，便于后续做日志归类、PR 阅读和版本发布。
+
+### 下一步
+1. 优先按 `type(scope): subject` 结构提交。
+2. 若改动较大，可补充 body，说明“做了什么”“为什么这么做”“影响范围”。
+---
+
 ## 2026-06-22 Figma UI 任务拆解补充
 
 ### 已完成
@@ -450,3 +567,95 @@
 1. 启动本地 dev server，浏览器检查 `/login` 在常见窗口尺寸下的视觉效果。
 2. 后续接入真实后端后，确认验证码返回字段与统一 Result 解包是否完全一致。
 3. 在账号体系 change 中继续拆分注册、忘记密码、短信登录和微信/扫码登录真实流程。
+
+---
+
+## 2026-06-23 数字人任务创建与文图生视频接口对接调研
+
+### 已完成
+- 已确认本次改动基于当前前端工程：`React 19 + Vite + TypeScript + Ant Design + React Query + Axios`。
+- 已扫描现有相关页面与模块：
+  - `src/pages/DigitalHumansPage.tsx`
+  - `src/pages/ImageVideoPage.tsx`
+  - `src/api/customer/text-image-video/index.ts`
+  - `src/api/customer/text-image-video/types.ts`
+- 已确认仓库内已经存在“文图生视频”基础接口封装，当前能力包括：
+  - 任务分页查询 `getTextImageVideoTaskPage`
+  - 创建任务 `createTextImageVideoTask`
+  - 任务详情 `getTextImageVideoTaskDetail`
+  - 删除任务 `deleteTextImageVideoTask`
+- 已通过浏览器访问用户端 Swagger 页面，并定位到“文图生视频”接口分组入口；当前已确认 Swagger 可访问，后续将继续展开具体 operation、请求体与返回体字段。
+- 已识别当前页面现状：
+  - `ImageVideoPage` 仍以本地交互假数据为主，尚未接入真实创建任务/轮询结果/任务记录联动。
+  - `DigitalHumansPage` 当前是纯前端 mock 管理页，尚未与真实“数字人任务创建”业务链路打通。
+  - 公共任务能力（创建、轮询、状态展示、结果预览、错误处理）尚未抽离为可复用模块。
+
+### 当前判断
+- 本次需求本质不是“只接一个按钮”，而是“文图生视频任务创建链路 + 任务状态流转 + 页面补全 + 公共能力抽取”的组合任务。
+- 现有 `text-image-video` API 封装只是第一层请求函数，距离页面可用还缺少：
+  - 面向表单的请求参数适配层
+  - 创建后任务状态刷新/轮询机制
+  - 任务列表与详情展示的公共状态映射
+  - 上传图片、预览、异常提示、空状态等页面级体验补全
+- 如果数字人页面最终也要复用“创建异步任务 -> 查询进度 -> 展示结果”的模式，应该抽公共 hook / status helper，而不是在单页里重复写一套。
+
+### 下一步
+1. 继续在 Swagger 中展开“文图生视频”具体接口，核对真实请求字段、返回字段与当前 `types.ts` 是否一致。
+2. 对照现有页面，梳理最小可落地业务闭环：创建任务、查询任务、结果展示、任务记录跳转。
+3. 输出 1-2 套前端对接方案对比，并向用户确认关键业务分歧点后再进入实现。
+
+## 2026-06-23 动态菜单路由接入第一阶段
+
+### 已完成
+- 开始执行 OpenSpec change：`connect-dynamic-menu-routes`，并按任务清单推进实现。
+- 确认前端已存在 `/api/v1/menus/routes` 调用入口：`src/api/system/menus/index.ts#getCurrentUserRoutes()`。
+- 修正动态路由返回类型：`src/api/system/menus/types.ts` 里的 `children` 现在兼容数组、空值和异常值，避免接口异常时直接打崩前端。
+- 新增动态路由转换层：`src/app/router/dynamicRoutes.ts`。
+  - 建立后端 `component` 到前端 `RouteKey` 的白名单映射。
+  - 递归归一化 `children`。
+  - 过滤未知组件，避免基于后端字符串做任意动态 import。
+  - 处理 `meta.hidden`、`meta.keepAlive`、`meta.alwaysShow`、`meta.params`、`redirect`。
+  - 识别外链 `redirect`，并从 React Router 内部路由注册中排除。
+- 扩展前端导航类型：`src/app/router/routeTypes.ts` 新增动态菜单/外链菜单状态模型。
+- 新增 React Query hook：`src/app/router/useCurrentUserRoutes.ts`，通过 Query 统一加载并转换当前用户菜单路由。
+- 应用入口接入动态路由初始化：
+  - `src/app/main.tsx` 接入 `QueryClientProvider`。
+  - `src/app/App.tsx` 接入登录态判断、动态菜单加载、未登录跳转、登录失效监听、403/404 渲染和受保护路由刷新恢复。
+- 侧边栏菜单改为消费动态菜单结果：`src/app/layouts/DashboardLayout.tsx` 不再直接依赖静态 `routeRegistry` 生成菜单。
+- 更新 `.gitignore`，新增忽略 `.playwright-mcp/`，避免浏览器调试临时文件进入提交。
+- 按 TDD 完成并跑通针对性测试：
+  - `src/app/router/dynamicRoutes.test.ts`
+  - `src/app/App.test.tsx`
+
+### 当前判断
+- 现在已经打通了“登录后加载动态菜单”和“未登录/登录失效跳登录页”的主链路。
+- 当前仍保留静态 `routeRegistry` 作为安全白名单与 fallback，符合这次 change 的设计边界。
+- `tasks.md` 中与“类型、转换器、初始化、登录跳转、针对性测试”直接相关的小项已更新为完成。
+
+### 验证结果
+- `npm test -- src/app/router/dynamicRoutes.test.ts src/app/App.test.tsx` 通过。
+
+### 下一步
+1. 跑完整 `npm run typecheck`、`npm test`、`npm run build`。
+2. 补做浏览器/手动验证：动态菜单渲染、刷新恢复、未登录跳登录、登录失效跳登录、403/404、隐藏菜单、外链跳转。
+3. 继续完成剩余 OpenSpec 任务，尤其是查询失效策略和浏览器验证记录。
+
+### 本阶段补充验证
+- `npm run typecheck` 通过。
+- `npm test` 通过，当前共 8 个测试文件、23 个测试全部通过。
+- `npm run build` 通过。
+- 当前构建存在 Vite 警告：`vendor -> react-vendor -> vendor` 循环 chunk 提示；这不是构建失败，但后续可以单独优化 `manualChunks` 规则。
+
+## 2026-06-23 App 路由初始化备注补充
+
+### 已完成
+- 在 `src/app/App.tsx` 中为动态路由初始化关键节点补充了中文备注。
+- 重点说明了：
+  - `publicRoutes` 使用 `useMemo` 固定引用的原因。
+  - `fallbackRouteState` 作为动态菜单失败/未返回时的守卫兜底作用。
+  - `candidateRoutes` 和 `availableRoutes` 分离的原因，避免未登录访问受保护页时误判成 404。
+  - `auth:expired` 事件跳转时为什么要保留 `redirect`。
+  - 隐藏路由命中时为什么侧边栏高亮要回退到可见路由。
+
+### 当前判断
+- 这次补的是“决策注释”，不是表面描述，后面你再看 `useMemo` 和候选路由判断时会更顺。

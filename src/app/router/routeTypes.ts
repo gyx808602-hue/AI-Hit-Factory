@@ -25,3 +25,35 @@ export type AppRoute = {
   component: LazyExoticComponent<ComponentType>;
   meta: RouteMeta;
 };
+
+type BaseNavigationItem = {
+  key: string;
+  title: string;
+  icon: string;
+  alwaysShow?: boolean;
+  params?: Record<string, string>;
+  children: NavigationItem[];
+};
+
+export type RouteNavigationItem = BaseNavigationItem & {
+  kind: "route";
+  route: AppRoute;
+  redirect?: string;
+};
+
+export type ExternalNavigationItem = BaseNavigationItem & {
+  kind: "external";
+  redirect: string;
+};
+
+export type GroupNavigationItem = BaseNavigationItem & {
+  kind: "group";
+};
+
+export type NavigationItem = RouteNavigationItem | ExternalNavigationItem | GroupNavigationItem;
+
+export type DynamicRouteState = {
+  routes: AppRoute[];
+  menuItems: NavigationItem[];
+  externalMenuItems: ExternalNavigationItem[];
+};
