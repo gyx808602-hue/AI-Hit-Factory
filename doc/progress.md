@@ -133,3 +133,228 @@
 
 1. 实现阶段按窗口矩阵做浏览器检查。
 2. 对任务记录、素材库、弹窗、步骤页重点检查横向溢出、按钮遮挡和低高度滚动问题。
+
+---
+
+## 2026-06-22 UI 底座实现阶段进展
+
+### 已完成
+
+- 开始执行 OpenSpec change：`add-figma-ui-shell-pages`。
+- 创建 Vite + React + TypeScript 工程骨架：
+  - `package.json`
+  - `index.html`
+  - `vite.config.ts`
+  - `tsconfig.json`
+  - `tsconfig.app.json`
+  - `tsconfig.node.json`
+  - `src/app/main.tsx`
+  - `src/app/App.tsx`
+  - `src/app/styles.css`
+- 建立应用目录与基础边界：
+  - `src/app/router`
+  - `src/app/layouts`
+  - `src/pages`
+  - `src/features/workspace`
+  - `src/shared/components`
+  - `src/test`
+- 建立静态路由注册表与路由守卫预留：
+  - `src/app/router/routeTypes.ts`
+  - `src/app/router/routeRegistry.tsx`
+  - `src/app/router/routeGuards.ts`
+- 建立首批 Mock 类型与 Mock 数据过滤：
+  - `src/features/workspace/types.ts`
+  - `src/features/workspace/status.ts`
+  - `src/features/workspace/mockData.ts`
+- 建立基础测试文件：
+  - `src/app/router/routeRegistry.test.ts`
+  - `src/app/router/routeGuards.test.ts`
+  - `src/features/workspace/mockData.test.ts`
+- 实现 Ant Design + TailwindCSS 应用壳：
+  - 暗色主题 token
+  - 侧边栏
+  - 顶部栏
+  - 内容滚动区域
+  - 侧边栏折叠
+  - 窗口兼容基础布局
+- 实现首批页面：
+  - 工作台
+  - 商品视频生成
+  - 图文生成视频
+  - 爆款视频改编 / 追爆
+  - 数字人管理
+  - 任务记录
+  - 素材库
+  - 403 / 404 预留页
+- 更新 `openspec/changes/add-figma-ui-shell-pages/tasks.md`，标记已完成的工程骨架、主题路由、Mock 边界、公共页面和演示页面任务。
+
+### 当前阻塞
+
+- `npm install` 需要联网安装依赖，但升级权限请求被审批服务拒绝，返回 `503 Service Unavailable`。
+- 因依赖未安装，以下验证命令当前无法通过：
+  - `npm run typecheck`：`tsc` 未安装。
+  - `npm test`：`vitest` 未安装。
+  - `npm run build`：`tsc` / `vite` 未安装。
+
+### 当前判断
+
+- 代码主体已经按 UI 底座任务落地，但还不能声明构建通过或测试通过。
+- 下一步必须先完成依赖安装，才能做 TypeScript、Vitest、Vite build 和浏览器窗口矩阵验证。
+- 当前实现没有接入真实后端、账号体系、积分扣费或真实视频生成，仍是 UI + Mock 演示闭环。
+
+### 下一步
+
+1. 等待用户明确批准或审批服务恢复后，执行 `npm install`。
+2. 安装成功后运行：
+   - `npm run typecheck`
+   - `npm test`
+   - `npm run build`
+3. 启动本地开发服务器，执行浏览器窗口矩阵检查。
+4. 修复验证中发现的类型、构建或布局问题。
+
+### 2026-06-22 依赖安装再次尝试
+
+- 用户已明确允许本次任务执行依赖安装和验证命令。
+- 再次执行 `npm install` 时，权限审批服务仍返回 `503 Service Unavailable`，命令未能真正进入 npm 安装阶段。
+- 当前不能绕过审批链路安装依赖，因此 TypeScript、Vitest、Vite build 和浏览器验证仍暂时阻塞。
+
+---
+
+## 2026-06-22 npm EBUSY 安装阻塞排查
+
+### 已完成
+
+- 已读取 npm 失败日志，确认错误发生在 npm `reify` 阶段：npm 正在把旧依赖目录重命名为临时退休目录时被 Windows 文件锁阻塞。
+- 第一次锁定点为 `node_modules/@ant-design/icons-svg/es/asn/AndroidFilled.js`，重新执行 `npm install` 后锁定点变化为 `node_modules/@rc-component/pagination`，说明不是单个文件损坏，而是当前 `node_modules` 处于半安装/被占用状态。
+- 已检查命令行中与当前项目路径相关的 Node/Vite/npm 进程，未发现明确指向 `F:\AAA_AI_aisperce\AI-Hit-Factory` 的运行进程。
+- 已执行 `npm install --package-lock-only --no-audit --no-fund` 并成功生成 `package-lock.json`，说明依赖解析和网络链路可用。
+- 已执行 `npm ls --depth=0`，结果显示根依赖仍为 `UNMET DEPENDENCY`，说明实体依赖尚未安装成功，现有 `node_modules` 不可用于类型检查、测试或构建。
+
+### 当前判断
+
+- 根因集中在 Windows 对旧 `node_modules` 的文件/目录锁，而不是依赖版本冲突或 npm 网络失败。
+- 下一步采用不删除文件的方式处理：将当前半安装的 `node_modules` 重命名为备份目录，再执行一次干净安装。
+
+---
+
+## 2026-06-22 依赖删除重装与自动化验证
+
+### 已完成
+
+- 根据用户明确授权，删除当前项目根目录下损坏的 `node_modules`，并清理本次半搬迁产生的 `node_modules.ebusy-backup-*` 残留目录。
+- 重新执行 `npm install` 成功，安装结果为 `added 268 packages`，后续补充 `jsdom` 后依赖总量恢复正常。
+- 新增测试环境依赖 `jsdom`，用于 Vitest 的 `jsdom` environment。
+- 修复 `vite.config.ts` 的类型入口：将 `defineConfig` 从 `vitest/config` 导入，使 TypeScript 正确认识 `test` 配置字段。
+- 更新 `.gitignore`，忽略 `node_modules`、`dist` 和 `*.tsbuildinfo`。
+- 已完成并通过以下验证：
+  - `npm ls --depth=0`
+  - `npm run typecheck`
+  - `npm run lint`
+  - `npm test`：3 个测试文件、8 个测试通过
+  - `npm run build`
+- 已更新 `openspec/changes/add-figma-ui-shell-pages/tasks.md`，勾选依赖安装、类型检查、lint 和生产构建任务。
+
+### 当前判断
+
+- 依赖安装阻塞已解除，项目现在可以进入浏览器运行与窗口兼容性验证阶段。
+- `npm run build` 有 Vite chunk size warning，原因是首期页面与 Ant Design 依赖被打进同一个入口包；当前不影响运行，后续可通过路由懒加载和 manual chunks 优化。
+- `npm audit` 提示 1 个 low severity vulnerability，当前不阻塞 UI 验收；后续可单独执行 `npm audit` 判断是否需要升级。
+
+### 下一步
+
+1. 启动本地开发服务并打开页面。
+2. 按窗口矩阵检查 `1280x720`、`1366x768`、`1440x900`、`1536x864`、`1920x1080`。
+3. 补充检查紧凑桌面 `1024px - 1279px` 和窄屏兜底 `<1024px`。
+4. 完成浏览器验证后继续更新任务清单与进展文档。
+
+---
+
+## 2026-06-22 浏览器路由与窗口兼容性验证
+
+### 已完成
+
+- 将应用从本地 state 切页改为 `BrowserRouter + Routes`，直接访问 `/product-video`、`/image-video`、`/viral-remix`、`/digital-humans`、`/tasks`、`/assets` 均可显示对应页面。
+- 保留现有侧边栏交互，点击导航时通过路由跳转，后续可承接后端动态菜单和权限映射。
+- 修复 Ant Design 6 兼容性警告：`Alert` 使用 `title` 替代已弃用的 `message`。
+- 浏览器验证结果：
+  - 所有首批页面直达 URL 均显示对应页面内容。
+  - 新标签页控制台错误为 0。
+  - `1280x720`、`1366x768`、`1440x900`、`1536x864`、`1920x1080` 窗口矩阵无全局横向溢出。
+  - `1024x720` 紧凑桌面与 `900x720` 窄屏兜底无白屏、无全局横向溢出。
+  - 数字人弹窗在 `1280x720` 下可打开，关闭按钮可见，弹窗区域无横向溢出。
+- 自动化验证再次通过：
+  - `npm run typecheck`
+  - `npm test`：3 个测试文件、8 个测试通过
+  - `npm run build`
+- 已执行 `openspec status --change add-figma-ui-shell-pages`，结果为 4/4 artifacts complete。
+- 已确认 `openspec/changes/add-figma-ui-shell-pages/tasks.md` 无未勾选任务项。
+
+### 当前判断
+
+- `add-figma-ui-shell-pages` 的 UI 底座、首批页面、路由直达、依赖安装和基础窗口兼容性已达到本阶段验收标准。
+- 构建仍有 Vite chunk size warning，属于首期未做路由级懒加载导致的包体提示，不影响本地运行和当前 UI 验收。
+- 当前页面仍为 Mock 演示闭环，未接入真实账号体系、积分扣费、视频生成后端或素材上传后端。
+
+### 下一步
+
+1. 后续可开始一期任务 1：账号体系，建议拆成登录注册、实名认证/企业认证、企业空间/子账号权限、积分/协议/风控审计几个子任务。
+2. 后续演示任务 2-4 可以分别基于当前 UI 页面继续接 mock 流程、API 契约和真实交互。
+3. 构建包体优化可作为后续技术债任务，用路由懒加载拆分 Ant Design 相关 chunk。
+
+---
+
+## 2026-06-22 路由懒加载与构建拆包优化
+
+### 已完成
+
+- 将 `routeRegistry` 的页面组件改为 `React.lazy` 动态导入，路由页面会独立生成 chunk。
+- 在 `App.tsx` 中增加 `Suspense` 路由加载兜底，避免页面切换期间出现空白。
+- 在 `vite.config.ts` 中增加 `manualChunks`：
+  - `react-vendor`：React、React DOM、React Router。
+  - `antd-vendor`：Ant Design、Ant Design icons、rc-component 相关依赖。
+  - `icon-vendor`：lucide-react。
+  - `vendor`：其他第三方依赖。
+- 增加 `LazyImage` 组件，统一图片缩略图的 `loading="lazy"` 与 `decoding="async"`。
+- 素材库图片类素材增加 mock 缩略图，并使用 `LazyImage` 渲染；非图片素材仍使用图标占位。
+- 增加测试覆盖：
+  - 路由注册表必须使用 lazy 页面组件。
+  - `LazyImage` 必须输出浏览器级懒加载属性。
+
+### 当前判断
+
+- 首页入口 chunk 已明显缩小，页面内容被拆为 `DashboardPage`、`ProductVideoPage`、`ImageVideoPage` 等独立 chunk。
+- Ant Design 仍是最大 vendor chunk，这是组件库体量导致，已通过 `manualChunks` 独立隔离，后续可继续做组件级按需策略或替换重型组件。
+
+### 下一步
+
+1. 若继续优化首屏，可进一步把部分 Ant Design 重型组件按页面边界隔离。
+2. 后续接真实素材库时，`thumbnailUrl` 可以替换成后端/CDN 返回地址，继续沿用 `LazyImage`。
+
+---
+
+## 2026-06-23 接口层封装与模块化 API
+
+### 已完成
+- 根据系统管理 Swagger 文档识别接口分组，先完成接口层实现，不改动页面业务逻辑。
+- 新增 axios 请求封装：`src/utils/request.ts`，包含基础 `baseURL`、超时、数组参数序列化、Bearer Token 注入、`no-auth` 跳过鉴权、统一 Result 解包、二进制下载直返、登录过期事件预留。
+- 新增认证存储工具：`src/utils/auth.ts`，集中管理 access token、refresh token 和登录过期清理。
+- 按模块拆分 API 文件夹：`system/auth`、`system/users`、`system/roles`、`system/menus`、`system/depts`、`system/dicts`、`system/configs`、`system/notices`、`system/logs`、`customer/text-image-video`。
+- 提取公共类型与公共方法：`src/api/shared/types.ts`、`src/api/shared/utils.ts`，统一分页类型、选项类型、ID 批量序列化、公开接口标记和下载配置。
+- 为请求封装补充 TDD 测试：`src/utils/request.test.ts`，覆盖 token 注入、`no-auth` 移除、业务成功解包、二进制响应直返和业务失败提示。
+- 根据要求给关键接口层内容补充中文注释，重点解释公共方法、认证接口和请求拦截器的设计意图。
+- 新增依赖：`axios`、`qs`、`@types/qs`。
+
+### 当前判断
+- 接口层现在已经具备接入真实后端的基础能力；页面后续只需要从对应模块 import API 函数，不需要直接关心 axios 细节。
+- Token 自动刷新当前只预留了过期事件和一次重试保护，真正 refresh-token 串联需要等登录状态模块落地后再补，避免现在过度设计。
+- Swagger 中文描述在终端中存在编码显示问题，但接口路径、operation 和 schema 字段可以正常读取，当前实现以路径和字段名为准。
+
+### 验证结果
+- `npm run typecheck` 通过。
+- `npm test` 通过：5 个测试文件、14 个测试。
+- `npm run build` 通过。
+
+### 下一步
+1. 接入登录页时，把 `login` 返回的 token 写入 `AuthStorage`。
+2. 接入动态菜单时，使用 `menuApi.getCurrentUserRoutes()` 映射到现有静态 route registry。
+3. 接入文图生视频真实流程时，优先使用 `customerTextImageVideoApi` 替换当前 mock 数据源。

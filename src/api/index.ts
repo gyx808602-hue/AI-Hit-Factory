@@ -1,0 +1,10 @@
+export * as authApi from "./system/auth";
+export * as configApi from "./system/configs";
+export * as customerTextImageVideoApi from "./customer/text-image-video";
+export * as deptApi from "./system/depts";
+export * as dictApi from "./system/dicts";
+export * as logApi from "./system/logs";
+export * as menuApi from "./system/menus";
+export * as noticeApi from "./system/notices";
+export * as roleApi from "./system/roles";
+export * as userApi from "./system/users";
