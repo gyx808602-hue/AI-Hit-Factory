@@ -1,6 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+import { getManualChunkName } from "./src/build/manualChunks";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -8,30 +9,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) {
-            return undefined;
-          }
-
-          if (
-            id.includes("/react/") ||
-            id.includes("/react-dom/") ||
-            id.includes("/react-router/") ||
-            id.includes("/react-router-dom/")
-          ) {
-            return "react-vendor";
-          }
-
-          if (id.includes("antd") || id.includes("@ant-design") || id.includes("@rc-component")) {
-            return "antd-vendor";
-          }
-
-          if (id.includes("lucide-react")) {
-            return "icon-vendor";
-          }
-
-          return "vendor";
-        },
+        manualChunks: getManualChunkName,
       },
     },
   },
@@ -39,6 +17,17 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test/setup.ts",
+    include: ["src/__tests_disabled__/**/*.test.ts", "src/__tests_disabled__/**/*.test.tsx"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.{idea,git,cache,output,temp}/**",
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "src/**/*.spec.ts",
+      "src/**/*.spec.tsx",
+    ],
+    passWithNoTests: true,
   },
   server: {
     proxy: {

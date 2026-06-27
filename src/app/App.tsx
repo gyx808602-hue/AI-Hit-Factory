@@ -2,6 +2,7 @@ import { ConfigProvider, message, Spin, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { matchPath, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { logout } from "../api/system/auth";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
@@ -13,6 +14,21 @@ import { useCurrentUserRoutes } from "./router/useCurrentUserRoutes";
 
 function getDefaultWorkspaceRoute(routes: AppRoute[]) {
   return routes.find((route) => !route.meta.hideInMenu) ?? routes[0];
+}
+
+function getFirstMenuRoute(menuItems: NavigationItem[]): AppRoute | undefined {
+  for (const item of menuItems) {
+    if (item.kind === "route") {
+      return item.route;
+    }
+
+    const childRoute = getFirstMenuRoute(item.children);
+    if (childRoute) {
+      return childRoute;
+    }
+  }
+
+  return undefined;
 }
 
 function resolveActiveMenuRoute(
@@ -97,6 +113,10 @@ function getFallbackRouteState(): DynamicRouteState {
   };
 }
 
+function getCurrentUserDisplayName() {
+  return AuthStorage.getCurrentUserName() || "商家用户";
+}
+
 export function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -123,6 +143,8 @@ export function App() {
     : [...publicRoutes, ...fallbackRouteState.routes, ...hiddenProtectedRoutes];
   const activeRoute = getActiveRoute(location.pathname, candidateRoutes);
   const routeAccess = resolveRouteAccess(activeRoute, { hasAccessToken, bypassTokenCheck });
+  const homeRoute = getFirstMenuRoute(dynamicRouteState.menuItems);
+  const currentUserName = getCurrentUserDisplayName();
 
   useEffect(() => {
     function handleAuthExpired() {
@@ -147,7 +169,7 @@ export function App() {
       const now = Date.now();
       const lastError = lastRequestErrorRef.current;
 
-      // 短时间内同文案只提示一次，避免全局错误事件导致 message 刷屏。
+      // 短时间内相同文案只提示一次，避免全局错误事件导致 message 刷屏。
       if (lastError && lastError.message === nextMessage && now - lastError.time < 1500) {
         return;
       }
@@ -162,8 +184,27 @@ export function App() {
     };
   }, []);
 
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      AuthStorage.clear();
+      const redirect = encodeURIComponent(buildRedirectTarget(location.pathname, location.search));
+      navigate(`/login?redirect=${redirect}`, { replace: true });
+    }
+  }
+
   if (dynamicRoutesQuery.isLoading) {
     return <DynamicRouteLoading />;
+  }
+
+  if (
+    canAccessProtectedRoutes &&
+    location.pathname === "/" &&
+    homeRoute &&
+    homeRoute.path !== "/"
+  ) {
+    return <Navigate to={homeRoute.path} replace />;
   }
 
   if (!routeAccess.allowed) {
@@ -249,8 +290,12 @@ export function App() {
       ) : (
         <DashboardLayout
           activeRouteKey={activeWorkspaceRoute.key}
+          currentUserName={currentUserName}
           menuItems={dynamicRouteState.menuItems}
           onNavigate={handleNavigate}
+          onLogout={() => {
+            void handleLogout();
+          }}
         >
           {activePage}
         </DashboardLayout>

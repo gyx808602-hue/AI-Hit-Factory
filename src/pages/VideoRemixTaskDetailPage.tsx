@@ -12,7 +12,6 @@ import {
 import {
   ArrowLeft,
   AudioLines,
-  CheckCircle2,
   FileImage,
   RefreshCw,
   UploadCloud,
@@ -44,6 +43,11 @@ import { StatusPill } from '../shared/components/StatusPill'
 const detailQueryKey = (taskId: string) => ['video-remix-task-detail', taskId]
 
 type UploadMode = 'replace' | 'append'
+type TaskAction =
+  | 'check-prompt'
+  | 'generate-prompt'
+  | 'generate-video'
+  | 'refresh'
 
 function mergeTaskIntoCache(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -51,6 +55,33 @@ function mergeTaskIntoCache(
   nextTask: VideoRemixTask,
 ) {
   queryClient.setQueryData(detailQueryKey(taskId), nextTask)
+}
+
+function resetTaskGeneratedState(
+  task: VideoRemixTask,
+  nextTargetVideoModel: string,
+): VideoRemixTask {
+  return {
+    ...task,
+    status: 0,
+    statusLabel: '待处理',
+    progress: 0,
+    errReason: undefined,
+    targetVideoModel: 'seedance2.0',
+    generatedPrompt: undefined,
+    promptProvider: undefined,
+    promptModel: undefined,
+    promptGeneratedAt: undefined,
+    promptCheckPass: undefined,
+    promptCheckReason: undefined,
+    promptCheckedAt: undefined,
+    videoProvider: undefined,
+    videoModel: undefined,
+    externalTaskId: undefined,
+    videoUrl: undefined,
+    coverUrl: undefined,
+    duration: undefined,
+  }
 }
 
 function SectionTitle({ title }: { title: string }) {
@@ -94,6 +125,12 @@ function splitAssetUrls(value?: string) {
     .filter(Boolean)
 }
 
+function removeAssetUrl(value?: string, targetUrl?: string) {
+  return splitAssetUrls(value)
+    .filter((url) => url !== targetUrl)
+    .join('\n')
+}
+
 export function VideoRemixTaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>()
   const navigate = useNavigate()
@@ -101,6 +138,7 @@ export function VideoRemixTaskDetailPage() {
   const [form] = Form.useForm<VideoRemixTaskFormValues>()
   const [actionError, setActionError] = useState('')
   const [actionSuccess, setActionSuccess] = useState('')
+  const [pendingAction, setPendingAction] = useState<TaskAction | null>(null)
   const referenceVideoInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const productImageInputRef = useRef<HTMLInputElement>(null)
@@ -124,17 +162,30 @@ export function VideoRemixTaskDetailPage() {
     })
   }, [detailQuery.data, form, taskId])
 
-  const saveMutation = useMutation({
-    mutationFn: (values: VideoRemixTaskFormValues) =>
-      saveVideoRemixTaskForm(taskId ?? '', mapFormValuesToSavePayload(values)),
-    onSuccess: (task) => {
-      if (!taskId) {
-        return
-      }
+  async function saveCurrentFormValues() {
+    if (!taskId) {
+      throw new Error('任务 ID 不存在')
+    }
 
-      mergeTaskIntoCache(queryClient, taskId, task)
-      clearVideoRemixTaskDraft(taskId)
-      setActionError('')
+    const values = await form.validateFields()
+    const nextTask = await saveVideoRemixTaskForm(
+      taskId,
+      mapFormValuesToSavePayload(values),
+    )
+
+    mergeTaskIntoCache(queryClient, taskId, nextTask)
+    clearVideoRemixTaskDraft(taskId)
+    setActionError('')
+
+    return nextTask
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async (values: VideoRemixTaskFormValues) => {
+      form.setFieldsValue(values)
+      return saveCurrentFormValues()
+    },
+    onSuccess: () => {
       setActionSuccess('任务信息已保存')
     },
     onError: (error: Error) => {
@@ -144,9 +195,9 @@ export function VideoRemixTaskDetailPage() {
   })
 
   const actionMutation = useMutation({
-    mutationFn: async (
-      action: 'check-prompt' | 'generate-prompt' | 'generate-video' | 'refresh',
-    ) => {
+    mutationFn: async (action: TaskAction) => {
+      setPendingAction(action)
+
       if (!taskId) {
         throw new Error('任务 ID 不存在')
       }
@@ -156,6 +207,7 @@ export function VideoRemixTaskDetailPage() {
       }
 
       if (action === 'generate-prompt') {
+        await saveCurrentFormValues()
         return generateVideoRemixTaskPrompt(taskId)
       }
 
@@ -166,6 +218,8 @@ export function VideoRemixTaskDetailPage() {
       return refreshVideoRemixTask(taskId)
     },
     onSuccess: (task, action) => {
+      setPendingAction(null)
+
       if (!taskId) {
         return
       }
@@ -177,11 +231,12 @@ export function VideoRemixTaskDetailPage() {
         action === 'refresh'
           ? '任务详情已刷新'
           : action === 'generate-video'
-            ? '已提交生成视频动作'
+            ? '已提交生成视频任务'
             : '任务状态已更新',
       )
     },
     onError: (error: Error) => {
+      setPendingAction(null)
       setActionSuccess('')
       setActionError(error.message)
     },
@@ -223,6 +278,7 @@ export function VideoRemixTaskDetailPage() {
     [task],
   )
   const referenceVideoUrl = Form.useWatch('referenceVideoUrl', form)
+  const audioUrl = Form.useWatch('audioUrl', form)
   const productImageUrlsText = Form.useWatch('productImageUrlsText', form)
   const characterImageUrlsText = Form.useWatch('characterImageUrlsText', form)
   const productImageUrls = useMemo(
@@ -277,7 +333,7 @@ export function VideoRemixTaskDetailPage() {
           </Button>
           <Button
             icon={<RefreshCw size={14} />}
-            loading={actionMutation.isPending}
+            loading={pendingAction === 'refresh'}
             onClick={() => actionMutation.mutate('refresh')}
           >
             刷新详情
@@ -337,25 +393,39 @@ export function VideoRemixTaskDetailPage() {
                   >
                     <Input maxLength={128} placeholder="请输入任务名称" />
                   </Form.Item>
-                  <Form.Item
+                  {/* <Form.Item
                     name="targetVideoModel"
                     label="目标模型"
-                    rules={[{ required: true, message: '请选择目标视频模型' }]}
+                    rules={[{ required: true, message: "请选择目标视频模型" }]}
                   >
                     <Select
                       options={[
-                        { value: 'wan2.7-r2v', label: 'Wan 2.7' },
-                        { value: 'seedance2.0', label: 'SeeDance 2.0' },
-                        { value: 'wan2.1-i2v', label: 'Wan 2.1' },
+                        { value: "wan2.7-r2v", label: "Wan 2.7" },
+                        { value: "seedance2.0", label: "SeeDance 2.0" },
+                        { value: "wan2.1-i2v", label: "Wan 2.1" },
                       ]}
-                    />
-                  </Form.Item>
-                </div>
+                      onChange={(value) => {
+                        const latestTask = queryClient.getQueryData<VideoRemixTask>(detailQueryKey(taskId));
+                        form.setFieldValue("targetVideoModel", value);
 
-                <div className="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)]">
+                        if (!taskId || !latestTask || latestTask.targetVideoModel === value) {
+                          return;
+                        }
+
+                        const nextTask = resetTaskGeneratedState(latestTask, value);
+                        mergeTaskIntoCache(queryClient, taskId, nextTask);
+                        form.setFieldsValue(mapTaskDetailToFormValues(nextTask));
+                        setActionError("");
+                        setActionSuccess("");
+                      }}
+                    />
+                  </Form.Item> */}
                   <Form.Item name="generationDuration" label="总时长(秒)">
                     <InputNumber min={5} max={120} className="w-full" />
                   </Form.Item>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-[180px_minmax(1fr)]">
                   <Form.Item name="remark" label="备注">
                     <Input.TextArea
                       rows={2}
@@ -479,20 +549,38 @@ export function VideoRemixTaskDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {productImageUrls.map((url) => (
-                      <a
+                      <div
                         key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-white"
+                        className="overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-white"
                       >
-                        <img
-                          data-testid="video-remix-product-image-preview"
-                          className="h-28 w-full object-cover"
-                          src={url}
-                          alt="商品图预览"
-                        />
-                      </a>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block"
+                        >
+                          <img
+                            data-testid="video-remix-product-image-preview"
+                            className="h-28 w-full object-cover"
+                            src={url}
+                            alt="商品图预览"
+                          />
+                        </a>
+                        <div className="border-t border-[var(--line-subtle)] p-2">
+                          <Button
+                            block
+                            size="small"
+                            onClick={() =>
+                              form.setFieldValue(
+                                'productImageUrlsText',
+                                removeAssetUrl(productImageUrlsText, url),
+                              )
+                            }
+                          >
+                            删除商品图
+                          </Button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -537,20 +625,38 @@ export function VideoRemixTaskDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {characterImageUrls.map((url) => (
-                      <a
+                      <div
                         key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-white"
+                        className="overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-white"
                       >
-                        <img
-                          data-testid="video-remix-character-image-preview"
-                          className="h-28 w-full object-cover"
-                          src={url}
-                          alt="人物图预览"
-                        />
-                      </a>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block"
+                        >
+                          <img
+                            data-testid="video-remix-character-image-preview"
+                            className="h-28 w-full object-cover"
+                            src={url}
+                            alt="人物图预览"
+                          />
+                        </a>
+                        <div className="border-t border-[var(--line-subtle)] p-2">
+                          <Button
+                            block
+                            size="small"
+                            onClick={() =>
+                              form.setFieldValue(
+                                'characterImageUrlsText',
+                                removeAssetUrl(characterImageUrlsText, url),
+                              )
+                            }
+                          >
+                            删除人物图
+                          </Button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -574,6 +680,20 @@ export function VideoRemixTaskDetailPage() {
                   void handleUpload(event, 'audioUrl', 'replace', uploadAudio)
                 }
               />
+
+              {audioUrl ? (
+                <div className="rounded-xl border border-[var(--line-subtle)] bg-[var(--muted-bg)] p-3">
+                  <div className="mb-2 text-[12px] text-[var(--text-muted)]">
+                    参考音频预览
+                  </div>
+                  <audio
+                    data-testid="video-remix-reference-audio-preview"
+                    className="w-full"
+                    controls
+                    src={audioUrl}
+                  />
+                </div>
+              ) : null}
             </section>
           </div>
 
@@ -596,10 +716,10 @@ export function VideoRemixTaskDetailPage() {
                 <div>状态：{statusMeta.label}</div>
                 <div>进度：{task.progress ?? 0}%</div>
                 <div>Prompt 服务：{task.promptProvider || '-'}</div>
-                <div>Prompt 模型：{task.promptModel || '-'}</div>
-                <div>
+                {/* <div>Prompt 模型：{task.promptModel || '-'}</div> */}
+                {/* <div>
                   视频模型：{task.videoModel || task.targetVideoModel || '-'}
-                </div>
+                </div> */}
                 <div>外部任务号：{task.externalTaskId || '-'}</div>
                 <div>
                   校验结果：
@@ -661,28 +781,20 @@ export function VideoRemixTaskDetailPage() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   disabled={!statusMeta.canGeneratePrompt}
-                  loading={actionMutation.isPending}
+                  loading={pendingAction === 'generate-prompt'}
                   onClick={() => actionMutation.mutate('generate-prompt')}
                 >
                   生成 Prompt
                 </Button>
-                {/* <Button
-                  disabled={!statusMeta.canCheckPrompt}
-                  loading={actionMutation.isPending}
-                  onClick={() => actionMutation.mutate("check-prompt")}
-                >
-                  检查通过
-                </Button>
-                <Button
-                  disabled={!statusMeta.canGenerateVideo}
-                  loading={actionMutation.isPending}
-                  onClick={() => actionMutation.mutate("generate-video")}
-                >
-                  生成视频
-                </Button>
-                <Button loading={actionMutation.isPending} onClick={() => actionMutation.mutate("refresh")}>
-                  刷新详情
-                </Button> */}
+                {task.generatedPrompt ? (
+                  <Button
+                    disabled={!statusMeta.canGenerateVideo}
+                    loading={pendingAction === 'generate-video'}
+                    onClick={() => actionMutation.mutate('generate-video')}
+                  >
+                    生成视频
+                  </Button>
+                ) : null}
               </div>
 
               <div className="flex gap-2">

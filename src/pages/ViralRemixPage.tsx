@@ -50,7 +50,7 @@ export function ViralRemixPage() {
       writeVideoRemixTaskDraft(taskId, {
         name: taskName.trim() || task.name,
         remark: taskRemark.trim(),
-        targetVideoModel: "wan2.7-r2v",
+        targetVideoModel: "seedance2.0",
         referenceVideoUrl: sourceVideoUrl,
         videoMetaSummary: analysisResult.map(([label, value]) => `${label}: ${value}`).join("\n"),
         productImageUrlsText: replaceProductImageUrl,

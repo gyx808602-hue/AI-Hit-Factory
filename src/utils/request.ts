@@ -92,7 +92,8 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
 
   const client = axios.create({
     adapter: options.adapter,
-    baseURL: options.baseURL ?? import.meta.env.VITE_APP_BASE_API ?? "",
+    // baseURL:  (options.baseURL ?? import.meta.env.VITE_APP_BASE_API ?? "")+'/api',
+    baseURL: (options.baseURL ?? import.meta.env.VITE_APP_BASE_API ?? ""),
     headers: { "Content-Type": "application/json;charset=utf-8" },
     paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
     timeout: 50000,

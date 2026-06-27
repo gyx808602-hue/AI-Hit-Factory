@@ -168,6 +168,7 @@ export function LoginPage() {
       } satisfies LoginRequest);
 
       AuthStorage.setTokenPair(tokens);
+      AuthStorage.setCurrentUserName(values.username);
       setRememberState(values.rememberMe, values.username);
       navigate(redirectPath, { replace: true });
     } catch (error) {

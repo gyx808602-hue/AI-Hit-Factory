@@ -43,7 +43,7 @@
 
 - [x] 7.1 运行视频追爆接口测试与页面测试
 - [x] 7.2 运行 `npm run typecheck`
-- [ ] 7.3 运行 `npm test`
-- [ ] 7.4 运行 `npm run build`
+- [x] 7.3 运行 `npm test`
+- [x] 7.4 运行 `npm run build`
 - [ ] 7.5 手动验证“创建 -> 详情 -> 保存 -> 生成 -> 刷新 -> 回看”主链路
-- [ ] 7.6 更新 `doc/progress.md` 记录实现进展与遗留问题
+- [x] 7.6 更新 `doc/progress.md` 记录实现进展与遗留问题

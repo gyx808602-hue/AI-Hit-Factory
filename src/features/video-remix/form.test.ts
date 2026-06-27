@@ -2,6 +2,36 @@ import { describe, expect, it } from "vitest";
 import { mapTaskDetailToFormValues, mapFormValuesToSavePayload } from "./form";
 
 describe("video-remix form helpers", () => {
+  it("uses seedance2.0 as the default target model", () => {
+    const values = mapTaskDetailToFormValues({
+      id: 1,
+      name: "杩界垎浠诲姟",
+      status: 0,
+      form: {},
+    });
+
+    expect(values.targetVideoModel).toBe("seedance2.0");
+  });
+
+  it("falls back to seedance2.0 when save payload target model is empty", () => {
+    const payload = mapFormValuesToSavePayload({
+      name: "追爆任务",
+      remark: "备注",
+      targetVideoModel: "",
+      referenceVideoUrl: "https://example.com/source.mp4",
+      videoMetaSummary: "summary",
+      productImageUrlsText: "https://example.com/p1.png",
+      characterImageUrlsText: "",
+      audioUrl: "",
+      productInfo: "商品信息",
+      voiceoverScript: "口播脚本",
+      direction: "改编方向",
+      generationDuration: 15,
+    });
+
+    expect(payload.targetVideoModel).toBe("seedance2.0");
+  });
+
   it("maps task detail into editable form values", () => {
     const values = mapTaskDetailToFormValues({
       id: 1,

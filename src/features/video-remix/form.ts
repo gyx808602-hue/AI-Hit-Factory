@@ -17,6 +17,7 @@ export interface VideoRemixTaskFormValues {
 }
 
 const DRAFT_KEY_PREFIX = "video-remix:draft:";
+const DEFAULT_TARGET_VIDEO_MODEL = "seedance2.0";
 
 function joinUrls(urls?: string[]) {
   return Array.isArray(urls) ? urls.join("\n") : "";
@@ -39,7 +40,7 @@ export function mapTaskDetailToFormValues(task: Partial<VideoRemixTask>): VideoR
   return {
     name: task.name ?? "",
     remark: task.remark ?? "",
-    targetVideoModel: form?.targetVideoModel ?? task.targetVideoModel ?? "wan2.7-r2v",
+    targetVideoModel: form?.targetVideoModel ?? task.targetVideoModel ?? DEFAULT_TARGET_VIDEO_MODEL,
     referenceVideoUrl: form?.referenceVideoUrl ?? "",
     videoMetaSummary: form?.videoMetaSummary ?? "",
     productImageUrlsText: joinUrls(form?.productImageUrls),
@@ -53,10 +54,12 @@ export function mapTaskDetailToFormValues(task: Partial<VideoRemixTask>): VideoR
 }
 
 export function mapFormValuesToSavePayload(values: VideoRemixTaskFormValues): VideoRemixTaskFormRequest {
+  const normalizedTargetVideoModel = normalizeText(values.targetVideoModel) || DEFAULT_TARGET_VIDEO_MODEL;
+
   return {
     name: normalizeText(values.name),
     remark: normalizeText(values.remark),
-    targetVideoModel: normalizeText(values.targetVideoModel),
+    targetVideoModel: normalizedTargetVideoModel,
     referenceVideoUrl: normalizeText(values.referenceVideoUrl),
     videoMetaSummary: normalizeText(values.videoMetaSummary),
     productImageUrls: splitUrls(values.productImageUrlsText ?? ""),

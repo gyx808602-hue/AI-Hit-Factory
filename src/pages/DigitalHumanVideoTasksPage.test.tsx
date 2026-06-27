@@ -294,6 +294,17 @@ describe("DigitalHumanVideoTasksPage", () => {
     });
   });
 
+  it("shows only the background color picker without a text input", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    expect(
+      await screen.findByTestId("digital-human-video-bg-color-picker"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("背景色")).not.toBeInTheDocument();
+  });
+
   it("refreshes, navigates to detail and deletes a task", async () => {
     const refreshMutation = {
       mutate: vi.fn(),

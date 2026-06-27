@@ -1,5 +1,6 @@
 const ACCESS_TOKEN_KEY = "ai_hit_factory_access_token";
 const REFRESH_TOKEN_KEY = "ai_hit_factory_refresh_token";
+const CURRENT_USER_NAME_KEY = "ai_hit_factory_current_user_name";
 
 export const AuthStorage = {
   getAccessToken() {
@@ -18,6 +19,21 @@ export const AuthStorage = {
     window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
   },
 
+  getCurrentUserName() {
+    return window.localStorage.getItem(CURRENT_USER_NAME_KEY) ?? "";
+  },
+
+  setCurrentUserName(userName: string) {
+    const trimmedUserName = userName.trim();
+
+    if (!trimmedUserName) {
+      window.localStorage.removeItem(CURRENT_USER_NAME_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(CURRENT_USER_NAME_KEY, trimmedUserName);
+  },
+
   setTokenPair(tokens: { accessToken?: string; refreshToken?: string }) {
     if (tokens.accessToken) {
       this.setAccessToken(tokens.accessToken);
@@ -31,6 +47,7 @@ export const AuthStorage = {
   clear() {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    window.localStorage.removeItem(CURRENT_USER_NAME_KEY);
   },
 };
 

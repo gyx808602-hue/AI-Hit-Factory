@@ -1,25 +1,30 @@
+import { Dropdown, type MenuProps } from 'antd'
 import {
   Bell,
+  ChevronDown,
   ChevronRight,
   ClipboardList,
   FolderOpen,
   Image,
   LayoutDashboard,
+  LogOut,
   Repeat2,
   User,
   User2,
   Video,
   Zap,
-} from "lucide-react";
-import { type ReactNode, useState } from "react";
-import type { NavigationItem, RouteKey } from "../router/routeTypes";
+} from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
+import type { NavigationItem, RouteKey } from '../router/routeTypes'
 
 type DashboardLayoutProps = {
-  activeRouteKey: RouteKey;
-  children: ReactNode;
-  menuItems: NavigationItem[];
-  onNavigate: (item: NavigationItem) => void;
-};
+  activeRouteKey: RouteKey
+  children: ReactNode
+  currentUserName: string
+  menuItems: NavigationItem[]
+  onNavigate: (item: NavigationItem) => void
+  onLogout: () => void
+}
 
 const iconMap = {
   LayoutDashboard,
@@ -29,15 +34,28 @@ const iconMap = {
   User2,
   ClipboardList,
   FolderOpen,
-};
+}
 
 export function DashboardLayout({
   activeRouteKey,
   children,
+  currentUserName,
   menuItems,
   onNavigate,
+  onLogout,
 }: DashboardLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false)
+  const userMenuItems = useMemo<MenuProps['items']>(
+    () => [
+      {
+        key: 'logout',
+        label: '退出登录',
+        icon: <LogOut size={14} />,
+        onClick: onLogout,
+      },
+    ],
+    [onLogout],
+  )
 
   return (
     <div className="flex h-screen min-w-0 overflow-hidden bg-[var(--app-bg)] text-[var(--text-primary)]">
@@ -54,15 +72,19 @@ export function DashboardLayout({
               <div className="truncate text-[13px] font-semibold leading-4 text-[var(--text-primary)]">
                 AI 爆款工厂
               </div>
-              <div className="truncate text-[11px] text-[var(--text-muted)]">内容生产平台</div>
+              <div className="truncate text-[11px] text-[var(--text-muted)]">
+                内容生产平台
+              </div>
             </div>
           )}
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
           {menuItems.map((item) => {
-            const Icon = iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard;
-            const active = item.kind === "route" && activeRouteKey === item.route.key;
+            const Icon =
+              iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard
+            const active =
+              item.kind === 'route' && activeRouteKey === item.route.key
 
             return (
               <button
@@ -70,10 +92,10 @@ export function DashboardLayout({
                 type="button"
                 className="flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition"
                 style={{
-                  justifyContent: collapsed ? "center" : "flex-start",
-                  borderColor: active ? "rgba(124,92,252,0.35)" : "transparent",
-                  background: active ? "rgba(124,92,252,0.16)" : "transparent",
-                  color: active ? "#9B7FFF" : "var(--text-muted)",
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  borderColor: active ? 'rgba(124,92,252,0.35)' : 'transparent',
+                  background: active ? 'rgba(124,92,252,0.16)' : 'transparent',
+                  color: active ? '#9B7FFF' : 'var(--text-muted)',
                 }}
                 title={collapsed ? item.title : undefined}
                 onClick={() => onNavigate(item)}
@@ -85,7 +107,7 @@ export function DashboardLayout({
                   </span>
                 )}
               </button>
-            );
+            )
           })}
         </nav>
 
@@ -94,12 +116,12 @@ export function DashboardLayout({
             type="button"
             className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
             onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+            aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
           >
             <ChevronRight
               size={14}
               style={{
-                transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
               }}
             />
           </button>
@@ -108,27 +130,36 @@ export function DashboardLayout({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[52px] shrink-0 items-center justify-end gap-3 border-b border-[var(--line-subtle)] px-4 sm:px-6">
-          <button
+          {/* <button
             type="button"
             className="relative rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
             aria-label="通知"
           >
             <Bell size={16} />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-[var(--text-secondary)] transition hover:bg-white/5"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
-              <User size={13} color="#fff" />
-            </span>
-            <span className="hidden sm:inline">商家用户</span>
-          </button>
+          </button> */}
+
+          <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-[var(--text-secondary)] transition hover:bg-white/5"
+              aria-label={`当前登录用户：${currentUserName}`}
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
+                <User size={13} color="#fff" />
+              </span>
+              <span className="hidden max-w-[120px] truncate sm:inline">
+                {currentUserName}
+              </span>
+              <ChevronDown size={14} className="text-[var(--text-muted)]" />
+            </button>
+          </Dropdown>
         </header>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          {children}
+        </main>
       </div>
     </div>
-  );
+  )
 }

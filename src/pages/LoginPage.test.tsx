@@ -7,6 +7,7 @@ const {
   mockedGetCaptcha,
   mockedLogin,
   mockedChangePassword,
+  mockedSetCurrentUserName,
   mockedSetTokenPair,
   mockedClear,
   mockedNavigate,
@@ -14,6 +15,7 @@ const {
   mockedGetCaptcha: vi.fn(),
   mockedLogin: vi.fn(),
   mockedChangePassword: vi.fn(),
+  mockedSetCurrentUserName: vi.fn(),
   mockedSetTokenPair: vi.fn(),
   mockedClear: vi.fn(),
   mockedNavigate: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("../api/system/auth", () => ({
 
 vi.mock("../utils/auth", () => ({
   AuthStorage: {
+    setCurrentUserName: mockedSetCurrentUserName,
     setTokenPair: mockedSetTokenPair,
     clear: mockedClear,
   },
@@ -57,6 +60,51 @@ describe("LoginPage", () => {
       captchaId: "captcha-id",
       captchaBase64:
         "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='44'%3E%3C/svg%3E",
+    });
+  });
+
+  it("stores current user name after login succeeds", async () => {
+    mockedLogin.mockResolvedValueOnce({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      tokenType: "Bearer",
+      expiresIn: 7200,
+    });
+
+    renderLoginPage();
+
+    await waitFor(() => {
+      expect(mockedGetCaptcha).toHaveBeenCalled();
+    });
+
+    const textboxes = screen.getAllByRole("textbox");
+    fireEvent.change(textboxes[0], { target: { value: "merchant01" } });
+    fireEvent.change(screen.getByPlaceholderText("璇疯緭鍏ラ獙璇佺爜"), {
+      target: { value: "1234" },
+    });
+
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    fireEvent.change(passwordInputs[0] as HTMLInputElement, {
+      target: { value: "Init@123" },
+    });
+
+    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockedLogin).toHaveBeenCalledWith({
+        phone: "merchant01",
+        password: "Init@123",
+        captchaKey: "captcha-id",
+        captchaCode: "1234",
+      });
+    });
+
+    expect(mockedSetCurrentUserName).toHaveBeenCalledWith("merchant01");
+    expect(mockedSetTokenPair).toHaveBeenCalledWith({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      tokenType: "Bearer",
+      expiresIn: 7200,
     });
   });
 

@@ -90,6 +90,7 @@ export const routeRegistry: AppRoute[] = [
       requiresAuth: false,
     },
   },
+  /* 宸ヤ綔鍙伴」鍓嶆殏鏃跺仠鐢紝鏂逛究楠岃瘉鏂扮殑棣栭〉鍒嗗彂閫昏緫銆?
   {
     key: 'workspace.dashboard',
     path: '/',
@@ -101,6 +102,7 @@ export const routeRegistry: AppRoute[] = [
       requiresAuth: true,
     },
   },
+  */
   // {
   //   key: "content.productVideo",
   //   path: "/product-video",
@@ -198,7 +200,7 @@ export const routeRegistry: AppRoute[] = [
   },
   {
     key: 'content.digitalHumanVideoTasks',
-    path: '/digital-humans/videos',
+    path: '/digital-videos',
     component: DigitalHumanVideoTasksPage,
     meta: {
       title: '数字人视频任务',
@@ -220,28 +222,28 @@ export const routeRegistry: AppRoute[] = [
       activeMenuKey: 'content.digitalHumanVideoTasks',
     },
   },
-  {
-    key: 'workspace.tasks',
-    path: '/tasks',
-    component: TaskRecordsPage,
-    meta: {
-      title: '任务记录',
-      icon: 'ClipboardList',
-      cache: true,
-      requiresAuth: true,
-    },
-  },
-  {
-    key: 'workspace.assets',
-    path: '/assets',
-    component: AssetLibraryPage,
-    meta: {
-      title: '素材库',
-      icon: 'FolderOpen',
-      cache: true,
-      requiresAuth: true,
-    },
-  },
+  // {
+  //   key: 'workspace.tasks',
+  //   path: '/tasks',
+  //   component: TaskRecordsPage,
+  //   meta: {
+  //     title: '任务记录',
+  //     icon: 'ClipboardList',
+  //     cache: true,
+  //     requiresAuth: true,
+  //   },
+  // },
+  // {
+  //   key: 'workspace.assets',
+  //   path: '/assets',
+  //   component: AssetLibraryPage,
+  //   meta: {
+  //     title: '素材库',
+  //     icon: 'FolderOpen',
+  //     cache: true,
+  //     requiresAuth: true,
+  //   },
+  // },
 ]
 
 export function getRouteByKey(routeKey: RouteKey): AppRoute {
