@@ -6,13 +6,13 @@ export interface VideoRemixTaskFormValues {
   remark: string;
   targetVideoModel: string;
   referenceVideoUrl: string;
-  videoMetaSummary: string;
   productImageUrlsText: string;
   characterImageUrlsText: string;
   audioUrl: string;
   productInfo: string;
   voiceoverScript: string;
   direction: string;
+  editablePrompt: string;
   generationDuration?: number;
 }
 
@@ -42,13 +42,14 @@ export function mapTaskDetailToFormValues(task: Partial<VideoRemixTask>): VideoR
     remark: task.remark ?? "",
     targetVideoModel: form?.targetVideoModel ?? task.targetVideoModel ?? DEFAULT_TARGET_VIDEO_MODEL,
     referenceVideoUrl: form?.referenceVideoUrl ?? "",
-    videoMetaSummary: form?.videoMetaSummary ?? "",
     productImageUrlsText: joinUrls(form?.productImageUrls),
     characterImageUrlsText: joinUrls(form?.characterImageUrls),
     audioUrl: form?.audioUrl ?? "",
     productInfo: form?.productInfo ?? "",
     voiceoverScript: form?.voiceoverScript ?? "",
     direction: form?.direction ?? "",
+    // 当前后端没有独立的可编辑 prompt 保存字段，这里先承接本地编辑态。
+    editablePrompt: task.generatedPrompt ?? "",
     generationDuration: form?.generationDuration ?? task.duration ?? 15,
   };
 }
@@ -61,7 +62,8 @@ export function mapFormValuesToSavePayload(values: VideoRemixTaskFormValues): Vi
     remark: normalizeText(values.remark),
     targetVideoModel: normalizedTargetVideoModel,
     referenceVideoUrl: normalizeText(values.referenceVideoUrl),
-    videoMetaSummary: normalizeText(values.videoMetaSummary),
+    // 当前 UI 已移除视频摘要输入，保存时保持空字符串兼容现有接口。
+    videoMetaSummary: "",
     productImageUrls: splitUrls(values.productImageUrlsText ?? ""),
     characterImageUrls: splitUrls(values.characterImageUrlsText ?? ""),
     audioUrl: normalizeText(values.audioUrl),

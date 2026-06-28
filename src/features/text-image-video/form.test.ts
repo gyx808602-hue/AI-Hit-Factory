@@ -10,6 +10,7 @@ import {
 describe("text-image-video form helpers", () => {
   it("creates default form values with the documented default model", () => {
     expect(createDefaultTextImageVideoFormValues()).toEqual({
+      topic: "",
       prompt: "",
       model: "seedance2.0",
       imageUrls: [],
@@ -40,13 +41,14 @@ describe("text-image-video form helpers", () => {
     const values = mapTaskDetailToFormValues({
       id: 101,
       imageUrls: ["https://example.com/a.png"],
-      prompt: "请生成数字人口播视频",
+      prompt: "Generate a product teaser video",
       model: "seedance2.0",
       status: 1,
     });
 
     expect(values).toEqual({
-      prompt: "请生成数字人口播视频",
+      topic: "",
+      prompt: "Generate a product teaser video",
       model: "seedance2.0",
       imageUrls: ["https://example.com/a.png"],
     });
@@ -55,12 +57,13 @@ describe("text-image-video form helpers", () => {
   it("maps form values into a create payload with trimmed prompt", () => {
     expect(
       mapTextImageVideoFormValuesToCreatePayload({
-        prompt: "  生成一条茶饮种草视频  ",
+        topic: "  Summer cold brew tea  ",
+        prompt: "  Generate a summer cold brew tea promo video  ",
         model: "seedance2.0",
         imageUrls: ["https://example.com/a.png"],
       }),
     ).toEqual({
-      prompt: "生成一条茶饮种草视频",
+      prompt: "Generate a summer cold brew tea promo video",
       model: "seedance2.0",
       imageUrls: ["https://example.com/a.png"],
     });

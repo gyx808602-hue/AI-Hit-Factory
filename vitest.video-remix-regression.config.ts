@@ -6,6 +6,7 @@ export default {
     ...baseConfig.test,
     include: [
       "src/api/aigc/video-remix-tasks/index.test.ts",
+      "src/build/manualChunks.test.ts",
       "src/pages/ViralRemixPage.test.tsx",
       "src/pages/VideoRemixTasksPage.test.tsx",
       "src/pages/VideoRemixTaskDetailPage.test.tsx",

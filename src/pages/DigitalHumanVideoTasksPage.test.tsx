@@ -43,6 +43,27 @@ vi.mock("antd", async () => {
 
   return {
     ...actual,
+    ColorPicker: ({
+      value,
+      onChange,
+      ...props
+    }: {
+      value?: string;
+      onChange?: (color: { toHexString: () => string }) => void;
+      [key: string]: unknown;
+    }) => (
+      <input
+        {...props}
+        aria-label="背景颜色选择器"
+        type="color"
+        value={typeof value === "string" ? value : "#000000"}
+        onChange={(event) =>
+          onChange?.({
+            toHexString: () => event.target.value,
+          })
+        }
+      />
+    ),
     message: {
       success: pageMocks.messageSuccess,
       error: pageMocks.messageError,
@@ -115,8 +136,18 @@ describe("DigitalHumanVideoTasksPage", () => {
     pageMocks.useDigitalHumanPage.mockReturnValue({
       data: {
         list: [
-          { id: "person-1", name: "小雅", status: 2 },
-          { id: "person-2", name: "小美", status: 2 },
+          {
+            id: "person-1",
+            name: "小雅",
+            status: 2,
+            previewImageUrl: "https://example.com/person-1.png",
+          },
+          {
+            id: "person-2",
+            name: "小美",
+            status: 2,
+            previewImageUrl: "https://example.com/person-2.png",
+          },
         ],
         total: 2,
       },
@@ -305,6 +336,97 @@ describe("DigitalHumanVideoTasksPage", () => {
     expect(screen.queryByLabelText("背景色")).not.toBeInTheDocument();
   });
 
+  it("uses a scrollable modal body with the preview stage centered", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    const modalBody = await screen.findByTestId("digital-human-video-create-modal-body");
+    const previewStage = screen.getByTestId("digital-human-video-preview-stage");
+    const previewStickyShell = screen.getByTestId("digital-human-video-preview-sticky-shell");
+
+    expect(modalBody).toBeInTheDocument();
+    expect(previewStage).toBeInTheDocument();
+    expect(previewStickyShell).toBeInTheDocument();
+    expect(modalBody.getAttribute("style")).toContain("max-height: 72vh");
+    expect(modalBody.getAttribute("style")).toContain("overflow-y: auto");
+    expect(previewStickyShell.className).toContain("sticky");
+  });
+
+  it("syncs the preview stage with selected digital human, background image and background color", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    fireEvent.mouseDown(screen.getByLabelText("数字人形象"));
+    fireEvent.click(await screen.findByText("小雅"));
+
+    const previewStage = await screen.findByTestId("digital-human-video-preview-stage");
+    const backgroundImageInput = screen.getByLabelText("背景图 URL");
+    const colorPicker = screen.getByLabelText("背景颜色选择器");
+
+    fireEvent.change(backgroundImageInput, {
+      target: { value: "https://example.com/preview-bg.png" },
+    });
+    fireEvent.change(colorPicker, {
+      target: { value: "#112233" },
+    });
+
+    expect(screen.getByTestId("digital-human-video-preview-person-image")).toHaveAttribute(
+      "src",
+      "https://example.com/person-1.png",
+    );
+    expect(screen.getByTestId("digital-human-video-preview-background-image")).toHaveAttribute(
+      "src",
+      "https://example.com/preview-bg.png",
+    );
+    expect(previewStage).toHaveAttribute("data-preview-bg-color", "#112233");
+  });
+
+  it("clears the background image and falls back to background color only", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    const backgroundImageInput = await screen.findByLabelText("背景图 URL");
+    fireEvent.change(backgroundImageInput, {
+      target: { value: "https://example.com/preview-bg.png" },
+    });
+
+    expect(await screen.findByTestId("digital-human-video-preview-background-image")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清空背景图" }));
+
+    expect(screen.queryByTestId("digital-human-video-preview-background-image")).not.toBeInTheDocument();
+    expect(screen.getByTestId("digital-human-video-preview-empty-background-tip")).toBeInTheDocument();
+  });
+
+  it("shows a richer empty state before selecting a digital human", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    expect(await screen.findByTestId("digital-human-video-preview-empty-person")).toBeInTheDocument();
+    expect(screen.getByText("选择数字人后将在此处联动预览")).toBeInTheDocument();
+    expect(screen.getByText("建议先选择形象，再调整位置和尺寸")).toBeInTheDocument();
+  });
+
+  it("shows canvas ratio and current frame metrics in the preview helper area", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    expect(await screen.findByTestId("digital-human-video-preview-stage-meta")).toHaveTextContent(
+      "画布比例 1080 × 1920",
+    );
+    expect(screen.getByTestId("digital-human-video-preview-frame-meta")).toHaveTextContent(
+      "人物位置 X:108 / Y:720",
+    );
+    expect(screen.getByTestId("digital-human-video-preview-frame-meta")).toHaveTextContent(
+      "人物尺寸 800 × 600",
+    );
+  });
+
   it("refreshes, navigates to detail and deletes a task", async () => {
     const refreshMutation = {
       mutate: vi.fn(),
@@ -347,8 +469,8 @@ describe("DigitalHumanVideoTasksPage", () => {
     fireEvent.mouseMove(window, { clientX: 58, clientY: 74 });
     fireEvent.mouseUp(window);
 
-    expect(xInput.value).toBe("216");
-    expect(yInput.value).toBe("624");
+    expect(xInput.value).toBe("189");
+    expect(yInput.value).toBe("648");
   });
 
   it("resizes the preview frame and updates width height inputs", async () => {
@@ -367,7 +489,7 @@ describe("DigitalHumanVideoTasksPage", () => {
     fireEvent.mouseMove(window, { clientX: 142.5, clientY: 220 });
     fireEvent.mouseUp(window);
 
-    expect(widthInput.value).toBe("935");
-    expect(heightInput.value).toBe("720");
+    expect(widthInput.value).toBe("901");
+    expect(heightInput.value).toBe("690");
   });
 });

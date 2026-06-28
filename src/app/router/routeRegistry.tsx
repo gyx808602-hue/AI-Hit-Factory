@@ -6,71 +6,85 @@ const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 )
+
 const ProductVideoPage = lazy(() =>
   import('../../pages/ProductVideoPage').then((module) => ({
     default: module.ProductVideoPage,
   })),
 )
+
 const ViralRemixPage = lazy(() =>
   import('../../pages/ViralRemixPage').then((module) => ({
     default: module.ViralRemixPage,
   })),
 )
+
 const ViralRemixTasksPage = lazy(() =>
   import('../../pages/VideoRemixTasksPage').then((module) => ({
     default: module.VideoRemixTasksPage,
   })),
 )
+
 const ViralRemixTaskDetailPage = lazy(() =>
   import('../../pages/VideoRemixTaskDetailPage').then((module) => ({
     default: module.VideoRemixTaskDetailPage,
   })),
 )
+
 const ImageVideoPage = lazy(() =>
   import('../../pages/ImageVideoPage').then((module) => ({
     default: module.ImageVideoPage,
   })),
 )
+
 const TextImageVideoTasksPage = lazy(() =>
   import('../../pages/TextImageVideoTasksPage').then((module) => ({
     default: module.TextImageVideoTasksPage,
   })),
 )
+
 const TextImageVideoTaskDetailPage = lazy(() =>
   import('../../pages/TextImageVideoTaskDetailPage').then((module) => ({
     default: module.TextImageVideoTaskDetailPage,
   })),
 )
+
 const DigitalHumansPage = lazy(() =>
   import('../../pages/DigitalHumansPage').then((module) => ({
     default: module.DigitalHumansPage,
   })),
 )
+
 const DigitalHumanDetailPage = lazy(() =>
   import('../../pages/DigitalHumanDetailPage').then((module) => ({
     default: module.DigitalHumanDetailPage,
   })),
 )
+
 const DigitalHumanVideoTasksPage = lazy(() =>
   import('../../pages/DigitalHumanVideoTasksPage').then((module) => ({
     default: module.DigitalHumanVideoTasksPage,
   })),
 )
+
 const DigitalHumanVideoTaskDetailPage = lazy(() =>
   import('../../pages/DigitalHumanVideoTaskDetailPage').then((module) => ({
     default: module.DigitalHumanVideoTaskDetailPage,
   })),
 )
+
 const TaskRecordsPage = lazy(() =>
   import('../../pages/TaskRecordsPage').then((module) => ({
     default: module.TaskRecordsPage,
   })),
 )
+
 const AssetLibraryPage = lazy(() =>
   import('../../pages/AssetLibraryPage').then((module) => ({
     default: module.AssetLibraryPage,
   })),
 )
+
 const LoginPage = lazy(() =>
   import('../../pages/LoginPage').then((module) => ({
     default: module.LoginPage,
@@ -90,7 +104,6 @@ export const routeRegistry: AppRoute[] = [
       requiresAuth: false,
     },
   },
-  /* 宸ヤ綔鍙伴」鍓嶆殏鏃跺仠鐢紝鏂逛究楠岃瘉鏂扮殑棣栭〉鍒嗗彂閫昏緫銆?
   {
     key: 'workspace.dashboard',
     path: '/',
@@ -102,19 +115,28 @@ export const routeRegistry: AppRoute[] = [
       requiresAuth: true,
     },
   },
-  */
-  // {
-  //   key: "content.productVideo",
-  //   path: "/product-video",
-  //   component: ProductVideoPage,
-  //   meta: { title: "商品视频生成", icon: "Video", cache: false, requiresAuth: true },
-  // },
-  // {
-  //   key: "content.viralRemix",
-  //   path: "/viral-remix",
-  //   component: ViralRemixPage,
-  //   meta: { title: "爆款视频改编", icon: "Repeat2", cache: false, requiresAuth: true },
-  // },
+  {
+    key: 'content.productVideo',
+    path: '/product-video',
+    component: ProductVideoPage,
+    meta: {
+      title: '商品视频生成',
+      icon: 'Video',
+      cache: false,
+      requiresAuth: true,
+    },
+  },
+  {
+    key: 'content.viralRemix',
+    path: '/viral-remix',
+    component: ViralRemixPage,
+    meta: {
+      title: '爆款视频改编',
+      icon: 'Repeat2',
+      cache: false,
+      requiresAuth: true,
+    },
+  },
   {
     key: 'content.viralRemixTasks',
     path: '/viral-remix/tasks',
@@ -200,7 +222,7 @@ export const routeRegistry: AppRoute[] = [
   },
   {
     key: 'content.digitalHumanVideoTasks',
-    path: '/digital-videos',
+    path: '/digital-humans/videos',
     component: DigitalHumanVideoTasksPage,
     meta: {
       title: '数字人视频任务',
@@ -222,28 +244,28 @@ export const routeRegistry: AppRoute[] = [
       activeMenuKey: 'content.digitalHumanVideoTasks',
     },
   },
-  // {
-  //   key: 'workspace.tasks',
-  //   path: '/tasks',
-  //   component: TaskRecordsPage,
-  //   meta: {
-  //     title: '任务记录',
-  //     icon: 'ClipboardList',
-  //     cache: true,
-  //     requiresAuth: true,
-  //   },
-  // },
-  // {
-  //   key: 'workspace.assets',
-  //   path: '/assets',
-  //   component: AssetLibraryPage,
-  //   meta: {
-  //     title: '素材库',
-  //     icon: 'FolderOpen',
-  //     cache: true,
-  //     requiresAuth: true,
-  //   },
-  // },
+  {
+    key: 'workspace.tasks',
+    path: '/tasks',
+    component: TaskRecordsPage,
+    meta: {
+      title: '任务记录',
+      icon: 'ClipboardList',
+      cache: true,
+      requiresAuth: true,
+    },
+  },
+  {
+    key: 'workspace.assets',
+    path: '/assets',
+    component: AssetLibraryPage,
+    meta: {
+      title: '素材库',
+      icon: 'FolderOpen',
+      cache: true,
+      requiresAuth: true,
+    },
+  },
 ]
 
 export function getRouteByKey(routeKey: RouteKey): AppRoute {

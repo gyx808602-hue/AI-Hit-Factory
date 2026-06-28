@@ -5,6 +5,7 @@ import type {
 } from "../../api/customer/text-image-video/types";
 
 export type TextImageVideoFormValues = {
+  topic: string;
   prompt: string;
   model: string;
   imageUrls: string[];
@@ -12,6 +13,7 @@ export type TextImageVideoFormValues = {
 
 export function createDefaultTextImageVideoFormValues(): TextImageVideoFormValues {
   return {
+    topic: "",
     prompt: "",
     model: "seedance2.0",
     imageUrls: [],
@@ -24,6 +26,7 @@ export function mapUploadResponsesToImageUrls(uploads: UploadRespVO[]) {
 
 export function mapTaskDetailToFormValues(task: TextImageVideoTask): TextImageVideoFormValues {
   return {
+    topic: "",
     prompt: task.prompt,
     model: task.model || "seedance2.0",
     imageUrls: Array.isArray(task.imageUrls) ? task.imageUrls : [],

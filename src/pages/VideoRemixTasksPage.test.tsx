@@ -169,6 +169,7 @@ describe("VideoRemixTasksPage", () => {
     expect(resultLink).toHaveAttribute("href", "https://example.com/result.mp4");
     expect(resultLink).toHaveAttribute("target", "_blank");
     expect(resultLink).toHaveAttribute("rel", "noreferrer");
+    expect(resultLink).toHaveTextContent("查看成品");
   });
 
   it("opens create modal, creates a task and navigates to detail page", async () => {

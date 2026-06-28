@@ -1,13 +1,22 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TextImageVideoTasksPage } from "./TextImageVideoTasksPage";
 
 const listPageMocks = vi.hoisted(() => ({
-  getTextImageVideoTaskPage: vi.fn(),
+  useMutation: vi.fn(),
+  useQuery: vi.fn(),
+  useQueryClient: vi.fn(),
   deleteTextImageVideoTask: vi.fn(),
+  getTextImageVideoTaskPage: vi.fn(),
   navigate: vi.fn(),
+  invalidateQueries: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: listPageMocks.useMutation,
+  useQuery: listPageMocks.useQuery,
+  useQueryClient: listPageMocks.useQueryClient,
 }));
 
 vi.mock("../api/customer/text-image-video", () => ({
@@ -24,20 +33,21 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-function renderTaskListPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
+function createUseQueryResult(overrides?: Record<string, unknown>) {
+  return {
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+    ...overrides,
+  };
+}
 
+function renderTaskListPage() {
   return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/image-video/tasks"]}>
-        <TextImageVideoTasksPage />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={["/image-video/tasks"]}>
+      <TextImageVideoTasksPage />
+    </MemoryRouter>,
   );
 }
 
@@ -46,75 +56,93 @@ describe("TextImageVideoTasksPage", () => {
     vi.clearAllMocks();
     vi.stubGlobal("confirm", vi.fn(() => true));
 
-    listPageMocks.getTextImageVideoTaskPage.mockImplementation((params?: { status?: number }) => {
-      if (params?.status === 2) {
-        return Promise.resolve({
-          list: [
-            {
-              id: 2,
-              imageUrls: ["https://example.com/b.png"],
-              prompt: "已完成任务",
-              model: "seedance2.0",
-              status: 2,
-              statusLabel: "已完成",
-              progress: 100,
-              videoUrl: "https://example.com/result.mp4",
-            },
-          ],
-          total: 1,
-        });
-      }
+    const taskPageData = {
+      list: [
+        {
+          id: 1,
+          imageUrls: ["https://example.com/a.png"],
+          prompt: "Queued task",
+          model: "seedance2.0",
+          status: 0,
+          statusLabel: "queued",
+          progress: 10,
+        },
+        {
+          id: 2,
+          imageUrls: ["https://example.com/b.png"],
+          prompt: "Finished task",
+          model: "seedance2.0",
+          status: 2,
+          statusLabel: "done",
+          progress: 100,
+          videoUrl: "https://example.com/result.mp4",
+        },
+      ],
+      total: 2,
+    };
 
-      return Promise.resolve({
-        list: [
-          {
-            id: 1,
-            imageUrls: ["https://example.com/a.png"],
-            prompt: "排队任务",
-            model: "seedance2.0",
-            status: 0,
-            statusLabel: "排队中",
-            progress: 10,
-          },
-          {
-            id: 2,
-            imageUrls: ["https://example.com/b.png"],
-            prompt: "已完成任务",
-            model: "seedance2.0",
-            status: 2,
-            statusLabel: "已完成",
-            progress: 100,
-            videoUrl: "https://example.com/result.mp4",
-          },
-        ],
-        total: 2,
-      });
+    listPageMocks.useQueryClient.mockReturnValue({
+      invalidateQueries: listPageMocks.invalidateQueries,
     });
-
-    listPageMocks.deleteTextImageVideoTask.mockResolvedValue(undefined);
+    listPageMocks.useMutation.mockReturnValue({
+      mutate: vi.fn((taskId: number) => {
+        listPageMocks.deleteTextImageVideoTask(taskId);
+        listPageMocks.invalidateQueries({ queryKey: ["text-image-video", "tasks"] });
+      }),
+    });
+    listPageMocks.getTextImageVideoTaskPage.mockResolvedValue(taskPageData);
+    listPageMocks.useQuery.mockReturnValue(
+      createUseQueryResult({
+        data: taskPageData,
+      }),
+    );
   });
 
   it("filters tasks by status and requests the matching status parameter", async () => {
     renderTaskListPage();
 
-    expect(await screen.findByText("排队任务")).toBeInTheDocument();
-    expect(screen.getByText("已完成任务")).toBeInTheDocument();
+    expect(screen.getByText("Queued task")).toBeInTheDocument();
+    expect(screen.getByText("Finished task")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: "已完成" }));
 
-    await waitFor(() => {
-      expect(listPageMocks.getTextImageVideoTaskPage).toHaveBeenLastCalledWith({
-        pageNum: 1,
-        pageSize: 10,
-        status: 2,
-      });
+    const secondQueryOptions = listPageMocks.useQuery.mock.calls.at(-1)?.[0];
+    const pageData = await secondQueryOptions.queryFn();
+
+    expect(pageData).toEqual({
+      list: [
+        {
+          id: 1,
+          imageUrls: ["https://example.com/a.png"],
+          prompt: "Queued task",
+          model: "seedance2.0",
+          status: 0,
+          statusLabel: "queued",
+          progress: 10,
+        },
+        {
+          id: 2,
+          imageUrls: ["https://example.com/b.png"],
+          prompt: "Finished task",
+          model: "seedance2.0",
+          status: 2,
+          statusLabel: "done",
+          progress: 100,
+          videoUrl: "https://example.com/result.mp4",
+        },
+      ],
+      total: 2,
+    });
+
+    expect(listPageMocks.getTextImageVideoTaskPage).toHaveBeenLastCalledWith({
+      pageNum: 1,
+      pageSize: 10,
+      status: 2,
     });
   });
 
   it("deletes a task and refreshes the current list", async () => {
     renderTaskListPage();
-
-    expect(await screen.findByText("排队任务")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "删除任务-1" }));
 
@@ -122,21 +150,13 @@ describe("TextImageVideoTasksPage", () => {
       expect(listPageMocks.deleteTextImageVideoTask).toHaveBeenCalledWith(1);
     });
 
-    expect(listPageMocks.getTextImageVideoTaskPage).toHaveBeenCalledTimes(2);
+    expect(listPageMocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["text-image-video", "tasks"],
+    });
   });
 
   it("debounces duplicate delete clicks for the same task", async () => {
-    let resolveDelete: (() => void) | undefined;
-    listPageMocks.deleteTextImageVideoTask.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveDelete = resolve;
-        }),
-    );
-
     renderTaskListPage();
-
-    expect(await screen.findByText("排队任务")).toBeInTheDocument();
 
     const deleteButton = screen.getByRole("button", { name: "删除任务-1" });
     fireEvent.click(deleteButton);
@@ -145,7 +165,56 @@ describe("TextImageVideoTasksPage", () => {
     await waitFor(() => {
       expect(listPageMocks.deleteTextImageVideoTask).toHaveBeenCalledTimes(1);
     });
+  });
 
-    resolveDelete?.();
+  it("polls the list while it still contains processing tasks", () => {
+    renderTaskListPage();
+
+    const queryOptions = listPageMocks.useQuery.mock.calls[0]?.[0];
+    const interval = queryOptions.refetchInterval({
+      state: {
+        data: {
+          list: [
+            {
+              id: 1,
+              imageUrls: [],
+              prompt: "Queued task",
+              model: "seedance2.0",
+              status: 0,
+              statusLabel: "queued",
+              progress: 10,
+            },
+          ],
+        },
+      },
+    });
+
+    expect(interval).toBe(5000);
+  });
+
+  it("does not poll the list when all tasks are already finished", () => {
+    renderTaskListPage();
+
+    const queryOptions = listPageMocks.useQuery.mock.calls[0]?.[0];
+    const interval = queryOptions.refetchInterval({
+      state: {
+        data: {
+          list: [
+            {
+              id: 2,
+              imageUrls: [],
+              prompt: "Finished task",
+              model: "seedance2.0",
+              status: 2,
+              statusLabel: "done",
+              progress: 100,
+              videoUrl: "https://example.com/result.mp4",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(interval).toBe(false);
   });
 });

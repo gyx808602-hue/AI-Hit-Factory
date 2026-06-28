@@ -22,6 +22,28 @@ describe("getManualChunkName", () => {
     ).toBe("antd-vendor");
   });
 
+  it("keeps ant design icons inside antd-vendor to avoid chunk cycles", () => {
+    expect(
+      getManualChunkName(
+        "F:/AAA_AI_aisperce/AI-Hit-Factory/node_modules/@ant-design/icons/es/icons/UploadOutlined.js",
+      ),
+    ).toBe("antd-vendor");
+  });
+
+  it("keeps ant design shared utilities inside antd-vendor", () => {
+    expect(
+      getManualChunkName(
+        "F:/AAA_AI_aisperce/AI-Hit-Factory/node_modules/@ant-design/cssinjs/es/index.js",
+      ),
+    ).toBe("antd-vendor");
+  });
+
+  it("keeps rc ecosystem packages inside antd-vendor", () => {
+    expect(
+      getManualChunkName("F:/AAA_AI_aisperce/AI-Hit-Factory/node_modules/rc-upload/es/index.js"),
+    ).toBe("antd-vendor");
+  });
+
   it("returns vendor for remaining third-party dependencies", () => {
     expect(
       getManualChunkName("F:/AAA_AI_aisperce/AI-Hit-Factory/node_modules/qs/lib/index.js"),

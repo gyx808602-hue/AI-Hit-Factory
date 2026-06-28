@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Button, Form, Input, Modal, Select, Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { ArrowRight, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, ExternalLink, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -124,14 +124,17 @@ export function VideoRemixTasksPage() {
         render: (_, task) => {
           if (task.videoUrl) {
             return (
-              <a
-                className="text-[12px] text-[#4ADE80] underline-offset-2 hover:underline"
+              <Button
+                size="small"
+                type="link"
+                className="px-0 text-[12px]"
+                icon={<ExternalLink size={12} />}
                 href={task.videoUrl}
                 target="_blank"
                 rel="noreferrer"
               >
                 查看成品
-              </a>
+              </Button>
             )
           }
 
@@ -239,17 +242,17 @@ export function VideoRemixTasksPage() {
                 setKeyword(event.target.value)
               }}
             />
-            {/* <Select
+            <Select
               allowClear
               className="min-w-[160px]"
               placeholder="按状态筛选"
               value={status}
               options={videoRemixStatusOptions}
               onChange={(value) => {
-                setPageNum(1);
-                setStatus(value);
+                setPageNum(1)
+                setStatus(value)
               }}
-            /> */}
+            />
           </div>
           <Button
             icon={<RefreshCw size={14} />}
@@ -326,7 +329,7 @@ export function VideoRemixTasksPage() {
 
             <div className="rounded-lg bg-[#F5F7FB] px-4 py-3 text-[13px] text-[var(--text-secondary)]">
               <span className="mr-2 text-[#F59E0B]">💡</span>
-              创建任务后，再次点击「编辑」按钮填写完整的素材与文案内容。
+              创建任务后，将进入「素材上传和配置 → 提示词 → 视频生成」三步流程继续完善内容。
             </div>
           </div>
         </div>

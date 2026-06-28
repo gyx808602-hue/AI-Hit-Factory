@@ -16,6 +16,7 @@ import { StatusPill } from "../shared/components/StatusPill";
 type StatusFilter = "all" | "0" | "2" | "3";
 
 const PAGE_SIZE = 10;
+const POLL_INTERVAL = 5000;
 
 function useTaskPage(status: StatusFilter) {
   return useQuery({
@@ -26,6 +27,13 @@ function useTaskPage(status: StatusFilter) {
         pageSize: PAGE_SIZE,
         status: status === "all" ? undefined : Number(status),
       }),
+    refetchInterval: (query) => {
+      const tasks = query.state.data?.list ?? [];
+      const hasProcessingTask = tasks.some(
+        (task) => getTextImageVideoTaskStatusMeta(task).resultState === "processing",
+      );
+      return hasProcessingTask ? POLL_INTERVAL : false;
+    },
   });
 }
 
@@ -148,7 +156,7 @@ export function TextImageVideoTasksPage() {
             value={statusFilter}
             options={[
               { label: "全部", value: "all" },
-              { label: "排队中", value: "0" },
+              { label: "处理中", value: "0" },
               { label: "已完成", value: "2" },
               { label: "生成失败", value: "3" },
             ]}

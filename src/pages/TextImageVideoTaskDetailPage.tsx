@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Empty } from "antd";
+import { Alert, Button, Empty, Progress } from "antd";
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getTextImageVideoTaskDetail } from "../api/customer/text-image-video";
@@ -7,6 +7,8 @@ import { mapTaskDetailToFormValues } from "../features/text-image-video/form";
 import { getTextImageVideoTaskStatusMeta } from "../features/text-image-video/status";
 import { PageShell } from "../shared/components/PageShell";
 import { StatusPill } from "../shared/components/StatusPill";
+
+const POLL_INTERVAL = 5000;
 
 function PreviewImageCard({
   imageUrl,
@@ -39,8 +41,17 @@ export function TextImageVideoTaskDetailPage() {
   const taskDetailQuery = useQuery({
     queryKey: ["text-image-video", "task-detail", taskId],
     enabled: Boolean(taskId),
-    // 详情页已经有局部错误提示，这里关闭全局弹错，避免 message 和 Alert 重复提示。
     queryFn: () => getTextImageVideoTaskDetail(taskId!, { silentError: true }),
+    refetchInterval: (query) => {
+      const task = query.state.data;
+
+      if (!task) {
+        return false;
+      }
+
+      const statusMeta = getTextImageVideoTaskStatusMeta(task);
+      return statusMeta.resultState === "processing" ? POLL_INTERVAL : false;
+    },
   });
 
   const task = taskDetailQuery.data;
@@ -88,6 +99,13 @@ export function TextImageVideoTaskDetailPage() {
             <div className="mt-3 text-[13px] text-[var(--text-muted)]">
               模型：{formValues.model} · 进度：{task.progress ?? 0}%
             </div>
+
+            {statusMeta.resultState === "processing" ? (
+              <div className="mt-4 rounded-xl border border-[var(--line-subtle)] bg-[var(--muted-bg)] p-4">
+                <div className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">生成进度</div>
+                <Progress percent={task.progress ?? 0} status="active" />
+              </div>
+            ) : null}
 
             <div className="mt-5 space-y-4">
               <div>
@@ -140,7 +158,6 @@ export function TextImageVideoTaskDetailPage() {
               {task.videoUrl ? (
                 <div className="space-y-2">
                   <div className="text-[12px] text-[var(--text-muted)]">结果视频预览</div>
-                  {/* 这里直接展示视频预览，保证详情页回显和下载入口在同一区域。 */}
                   <video
                     data-testid="text-image-video-result-video-preview"
                     className="w-full rounded-xl border border-[var(--line-subtle)]"

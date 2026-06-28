@@ -1,20 +1,14 @@
 import request, { type DataRequestClient, type RequestConfig } from "../../../utils/request";
-import type { Id, PageData } from "../../shared/types";
+import type { Id } from "../../shared/types";
 import type {
   TextImageVideoCreateRequest,
+  TextImageVideoPromptGenerateRequest,
+  TextImageVideoPromptGenerateResponse,
   TextImageVideoTask,
   TextImageVideoTaskPageResponse,
   TextImageVideoTaskQuery,
 } from "./types";
 
-// ... existing code ...
-
-/**
- * 分页查询图文视频任务列表
- * 
- * @param params - 查询参数，包含分页信息和状态筛选条件
- * @returns {Promise<PageData<TextImageVideoTask>>} 返回分页数据，包含任务列表和分页信息
- */
 function isRequestClient(value: unknown): value is DataRequestClient {
   return (typeof value === "object" || typeof value === "function") && value !== null && "get" in value;
 }
@@ -36,6 +30,21 @@ function resolveRequestArgs(
   };
 }
 
+function createLocalPromptFallback(data: TextImageVideoPromptGenerateRequest) {
+  const cleanTopic = data.topic.trim();
+  const imageHint =
+    data.inputMode === "text"
+      ? "围绕主题直接展开内容"
+      : `结合已上传的 ${data.imageUrls.length} 张参考图组织镜头与画面描述`;
+
+  return [
+    `请围绕“${cleanTopic}”生成一条适合短视频成片的中文文案。`,
+    `整体风格要求自然、口语化、适合社交平台传播，${imageHint}。`,
+    "文案请包含开场吸引点、核心卖点、使用场景和结尾行动引导。",
+    "画面节奏控制在 15 到 30 秒，字幕表达简洁，适合配音和自动字幕生成。",
+  ].join("");
+}
+
 export function getTextImageVideoTaskPage(
   params?: TextImageVideoTaskQuery,
   configOrClient?: RequestConfig | DataRequestClient,
@@ -48,12 +57,6 @@ export function getTextImageVideoTaskPage(
   });
 }
 
-/**
- * 创建图文视频生成任务
- * 
- * @param data - 任务创建请求数据，包含图片URL数组、提示词和可选的模型参数
- * @returns {Promise<TextImageVideoTask>} 返回创建的任务详情
- */
 export function createTextImageVideoTask(
   data: TextImageVideoCreateRequest,
   client: DataRequestClient = request,
@@ -61,12 +64,16 @@ export function createTextImageVideoTask(
   return client.post<TextImageVideoTask>("/user-api/customer/text-image-video/tasks", data);
 }
 
-/**
- * 获取图文视频任务详情
- * 
- * @param id - 任务ID
- * @returns {Promise<TextImageVideoTask>} 返回任务详细信息，包括状态、进度、生成的视频URL等
- */
+export function generateTextImageVideoPrompt(
+  data: TextImageVideoPromptGenerateRequest,
+  _client: DataRequestClient = request,
+): Promise<TextImageVideoPromptGenerateResponse> {
+  // 当前产品文档尚未公开文图生视频专属生成文案接口，这里先提供前端可替换的预生成边界。
+  return Promise.resolve({
+    prompt: createLocalPromptFallback(data),
+  });
+}
+
 export function getTextImageVideoTaskDetail(
   id: Id,
   configOrClient?: RequestConfig | DataRequestClient,
@@ -76,12 +83,6 @@ export function getTextImageVideoTaskDetail(
   return client.get<TextImageVideoTask>(`/user-api/customer/text-image-video/tasks/${id}`, config);
 }
 
-/**
- * 删除图文视频任务
- * 
- * @param id - 要删除的任务ID
- * @returns {Promise<void>} 删除操作完成，无返回值
- */
 export function deleteTextImageVideoTask(id: Id, client: DataRequestClient = request) {
   return client.delete<void>(`/user-api/customer/text-image-video/tasks/${id}`);
 }

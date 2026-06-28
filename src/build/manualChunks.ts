@@ -13,7 +13,13 @@ export function getManualChunkName(id: string): string | undefined {
     return "react-vendor";
   }
 
-  if (id.includes("antd") || id.includes("@ant-design") || id.includes("@rc-component")) {
+  if (
+    id.includes("/antd/") ||
+    id.includes("\\antd\\") ||
+    id.includes("@ant-design/") ||
+    id.includes("@rc-component") ||
+    /[/\\]node_modules[/\\]rc-[^/\\]+/.test(id)
+  ) {
     return "antd-vendor";
   }
 

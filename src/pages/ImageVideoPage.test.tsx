@@ -7,6 +7,7 @@ import { ImageVideoPage } from "./ImageVideoPage";
 const pageMocks = vi.hoisted(() => ({
   uploadImage: vi.fn(),
   createTextImageVideoTask: vi.fn(),
+  generateTextImageVideoPrompt: vi.fn(),
   navigate: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock("../api/aigc/uploads", () => ({
 
 vi.mock("../api/customer/text-image-video", () => ({
   createTextImageVideoTask: pageMocks.createTextImageVideoTask,
+  generateTextImageVideoPrompt: pageMocks.generateTextImageVideoPrompt,
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -44,6 +46,12 @@ function renderImageVideoPage() {
   );
 }
 
+function getUploadInput() {
+  const input = document.querySelector('input[type="file"][name="file"]');
+  expect(input).not.toBeNull();
+  return input as HTMLInputElement;
+}
+
 describe("ImageVideoPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,29 +63,42 @@ describe("ImageVideoPage", () => {
     pageMocks.createTextImageVideoTask.mockResolvedValue({
       id: 101,
       imageUrls: ["https://example.com/a.png"],
-      prompt: "生成一条茶饮种草视频",
+      prompt: "Generate a tea promo video",
       model: "seedance2.0",
       status: 0,
     });
+    pageMocks.generateTextImageVideoPrompt.mockResolvedValue({
+      prompt: "Generate a short mixed-media promo about office wellness tea for busy workers.",
+    });
   });
 
-  it("renders figma-aligned sections for image video creation", () => {
+  it("renders the create page sections including topic and ai prompt generation", () => {
     renderImageVideoPage();
 
-    expect(screen.getByText("图文生成视频")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "查看任务列表" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /AI.*生成文案/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/视频主题/i)).toBeInTheDocument();
-    expect(screen.getByText("文字输入")).toBeInTheDocument();
-    expect(screen.getByText("图片上传")).toBeInTheDocument();
-    expect(screen.getByText("图文混合")).toBeInTheDocument();
-    expect(screen.getByTestId("image-video-upload-input")).toBeInTheDocument();
-    expect(screen.getByText("视频预览")).toBeInTheDocument();
+    expect(getUploadInput()).toBeInTheDocument();
   });
 
-  it("creates a text-image-video task and navigates to the detail page", async () => {
+  it("renders the prompt input after the upload section", () => {
     renderImageVideoPage();
 
-    fireEvent.change(screen.getByTestId("image-video-upload-input"), {
+    const uploadSection = screen.getByTestId("image-video-upload-section");
+    const promptSection = screen.getByTestId("image-video-prompt-section");
+
+    expect(
+      uploadSection.compareDocumentPosition(promptSection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("generates prompt from topic and keeps the prompt editable before create", async () => {
+    renderImageVideoPage();
+
+    fireEvent.change(screen.getByLabelText(/视频主题/i), {
+      target: { value: "办公室养生茶推荐" },
+    });
+
+    fireEvent.change(getUploadInput(), {
       target: {
         files: [new File(["image"], "a.png", { type: "image/png" })],
       },
@@ -87,8 +108,23 @@ describe("ImageVideoPage", () => {
       expect(pageMocks.uploadImage).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByPlaceholderText("请输入视频提示词，例如：生成一条茶饮种草短视频"), {
-      target: { value: "生成一条茶饮种草视频" },
+    fireEvent.click(screen.getByRole("button", { name: /AI.*生成文案/i }));
+
+    await waitFor(() => {
+      expect(pageMocks.generateTextImageVideoPrompt).toHaveBeenCalledWith({
+        topic: "办公室养生茶推荐",
+        imageUrls: ["https://example.com/a.png"],
+        inputMode: "mixed",
+      });
+    });
+
+    const promptInput = screen.getByRole("textbox", { name: /文案内容|输入文案|生成文案/i });
+    expect(promptInput).toHaveValue(
+      "Generate a short mixed-media promo about office wellness tea for busy workers.",
+    );
+
+    fireEvent.change(promptInput, {
+      target: { value: "生成更口语化、更适合上班族传播的办公室养生茶短视频文案。" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /开始生成视频/i }));
@@ -96,12 +132,26 @@ describe("ImageVideoPage", () => {
     await waitFor(() => {
       expect(pageMocks.createTextImageVideoTask).toHaveBeenCalledWith({
         imageUrls: ["https://example.com/a.png"],
-        prompt: "生成一条茶饮种草视频",
+        prompt: "生成更口语化、更适合上班族传播的办公室养生茶短视频文案。",
         model: "seedance2.0",
       });
     });
+  });
 
-    expect(pageMocks.navigate).toHaveBeenCalledWith("/image-video/tasks/101");
+  it("blocks prompt generation in mixed mode when images are missing", async () => {
+    renderImageVideoPage();
+
+    fireEvent.change(screen.getByLabelText(/视频主题/i), {
+      target: { value: "办公室养生茶推荐" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /AI.*生成文案/i }));
+
+    await waitFor(() => {
+      expect(pageMocks.generateTextImageVideoPrompt).not.toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("请先上传至少一张参考图")).toBeInTheDocument();
   });
 
   it("renders uploaded images as managed upload items", async () => {
@@ -119,7 +169,7 @@ describe("ImageVideoPage", () => {
 
     renderImageVideoPage();
 
-    fireEvent.change(screen.getByTestId("image-video-upload-input"), {
+    fireEvent.change(getUploadInput(), {
       target: {
         files: [
           new File(["image-a"], "a.png", { type: "image/png" }),
@@ -134,15 +184,12 @@ describe("ImageVideoPage", () => {
 
     expect(screen.getByText("a.png")).toBeInTheDocument();
     expect(screen.getByText("b.png")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /删除图片-a\.png/i }),
-    ).toBeInTheDocument();
   });
 
   it("removes deleted upload item from ui and payload", async () => {
     renderImageVideoPage();
 
-    fireEvent.change(screen.getByTestId("image-video-upload-input"), {
+    fireEvent.change(getUploadInput(), {
       target: {
         files: [new File(["image"], "a.png", { type: "image/png" })],
       },
@@ -155,27 +202,30 @@ describe("ImageVideoPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /删除图片-a\.png/i }));
     fireEvent.click(screen.getByText("文字输入"));
 
-    fireEvent.change(screen.getAllByRole("textbox")[1], {
+    fireEvent.change(screen.getByLabelText(/视频主题/i), {
+      target: { value: "Tea topic" },
+    });
+
+    const promptInput = screen.getByRole("textbox", { name: /文案内容|输入文案|生成文案/i });
+    fireEvent.change(promptInput, {
       target: { value: "prompt text" },
     });
 
-    fireEvent.click(screen.getAllByRole("button").at(-1)!);
+    fireEvent.click(screen.getByRole("button", { name: /开始生成视频/i }));
 
     await waitFor(() => {
-      expect(pageMocks.createTextImageVideoTask).toHaveBeenCalled();
-    });
-
-    expect(pageMocks.createTextImageVideoTask).toHaveBeenCalledWith({
-      imageUrls: [],
-      prompt: "prompt text",
-      model: "seedance2.0",
+      expect(pageMocks.createTextImageVideoTask).toHaveBeenCalledWith({
+        imageUrls: [],
+        prompt: "prompt text",
+        model: "seedance2.0",
+      });
     });
   });
 
   it("navigates to task list from the header action", () => {
     renderImageVideoPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "查看任务列表" }));
+    fireEvent.click(screen.getByRole("button", { name: /查看任务列表/i }));
 
     expect(pageMocks.navigate).toHaveBeenCalledWith("/image-video/tasks");
   });

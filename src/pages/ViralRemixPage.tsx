@@ -52,7 +52,6 @@ export function ViralRemixPage() {
         remark: taskRemark.trim(),
         targetVideoModel: "seedance2.0",
         referenceVideoUrl: sourceVideoUrl,
-        videoMetaSummary: analysisResult.map(([label, value]) => `${label}: ${value}`).join("\n"),
         productImageUrlsText: replaceProductImageUrl,
         productInfo: replaceProductName || imitateProductInfo,
         direction: directionMap[mode],

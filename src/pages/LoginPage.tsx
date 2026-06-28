@@ -273,7 +273,7 @@ export function LoginPage() {
           <p className="m-0 text-[12px] text-[var(--text-muted)]">Copyright © 2026 AI-Hit-Factory</p>
         </section>
 
-        <section className="flex min-h-[560px] items-center justify-center border-t border-white/10 bg-[#10111A]/95 px-5 py-10 lg:min-h-screen lg:border-l lg:border-t-0 lg:px-10">
+        <section className="flex min-h-[560px] items-center justify-center border-t  border-white/10 bg-[#10111A]/95 px-5 py-10 lg:min-h-screen lg:border-l lg:border-t-0 lg:px-10">
           <div className="w-full max-w-[420px]">
             <div className="mb-7">
               <h2 className="m-0 text-[32px] font-bold leading-10 text-white">
