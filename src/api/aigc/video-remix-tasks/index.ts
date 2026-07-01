@@ -67,3 +67,27 @@ export function generateVideoRemixTaskVideo(id: Id, client: DataRequestClient = 
 export function refreshVideoRemixTask(id: Id, client: DataRequestClient = request) {
   return client.get<VideoRemixTask>(`${VIDEO_REMIX_TASKS_BASE_URL}/${id}/refresh`);
 }
+
+/**
+ *AI 生成产品信息
+ *
+ * @param id 
+ * @param client 
+ * @returns 
+ */
+export function generateVideoRemixTaskProductInfo(id: Id, client: DataRequestClient = request) {
+
+  return client.post<VideoRemixTask>(`${VIDEO_REMIX_TASKS_BASE_URL}/${id}/generate-product-info`);
+}
+
+/**
+ *AI 生成口播文案
+ *
+ * @param id 
+ * @param client 
+ * @returns 
+ */
+export function generateVideoRemixTaskVoiceoverScript(id: Id, client: DataRequestClient = request) {
+
+  return client.post<VideoRemixTask>(`${VIDEO_REMIX_TASKS_BASE_URL}/${id}/generate-voiceover-script`);
+}

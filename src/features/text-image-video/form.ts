@@ -15,7 +15,7 @@ export function createDefaultTextImageVideoFormValues(): TextImageVideoFormValue
   return {
     topic: "",
     prompt: "",
-    model: "seedance2.0",
+    model: "dreamina-seedance-2-0",
     imageUrls: [],
   };
 }
@@ -28,7 +28,7 @@ export function mapTaskDetailToFormValues(task: TextImageVideoTask): TextImageVi
   return {
     topic: "",
     prompt: task.prompt,
-    model: task.model || "seedance2.0",
+    model: task.model || "dreamina-seedance-2-0",
     imageUrls: Array.isArray(task.imageUrls) ? task.imageUrls : [],
   };
 }
@@ -38,7 +38,7 @@ export function mapTextImageVideoFormValuesToCreatePayload(
 ): TextImageVideoCreateRequest {
   return {
     prompt: values.prompt.trim(),
-    model: values.model || "seedance2.0",
+    model: values.model || "dreamina-seedance-2-0",
     imageUrls: Array.isArray(values.imageUrls) ? values.imageUrls : [],
   };
 }

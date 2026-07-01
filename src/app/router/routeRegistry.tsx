@@ -104,39 +104,39 @@ export const routeRegistry: AppRoute[] = [
       requiresAuth: false,
     },
   },
-  {
-    key: 'workspace.dashboard',
-    path: '/',
-    component: DashboardPage,
-    meta: {
-      title: '工作台',
-      icon: 'LayoutDashboard',
-      cache: true,
-      requiresAuth: true,
-    },
-  },
-  {
-    key: 'content.productVideo',
-    path: '/product-video',
-    component: ProductVideoPage,
-    meta: {
-      title: '商品视频生成',
-      icon: 'Video',
-      cache: false,
-      requiresAuth: true,
-    },
-  },
-  {
-    key: 'content.viralRemix',
-    path: '/viral-remix',
-    component: ViralRemixPage,
-    meta: {
-      title: '爆款视频改编',
-      icon: 'Repeat2',
-      cache: false,
-      requiresAuth: true,
-    },
-  },
+  // {
+  //   key: 'workspace.dashboard',
+  //   path: '/',
+  //   component: DashboardPage,
+  //   meta: {
+  //     title: '工作台',
+  //     icon: 'LayoutDashboard',
+  //     cache: true,
+  //     requiresAuth: true,
+  //   },
+  // },
+  // {
+  //   key: 'content.productVideo',
+  //   path: '/product-video',
+  //   component: ProductVideoPage,
+  //   meta: {
+  //     title: '商品视频生成',
+  //     icon: 'Video',
+  //     cache: false,
+  //     requiresAuth: true,
+  //   },
+  // },
+  // {
+  //   key: 'content.viralRemix',
+  //   path: '/viral-remix',
+  //   component: ViralRemixPage,
+  //   meta: {
+  //     title: '爆款视频改编',
+  //     icon: 'Repeat2',
+  //     cache: false,
+  //     requiresAuth: true,
+  //   },
+  // },
   {
     key: 'content.viralRemixTasks',
     path: '/viral-remix/tasks',
@@ -244,28 +244,28 @@ export const routeRegistry: AppRoute[] = [
       activeMenuKey: 'content.digitalHumanVideoTasks',
     },
   },
-  {
-    key: 'workspace.tasks',
-    path: '/tasks',
-    component: TaskRecordsPage,
-    meta: {
-      title: '任务记录',
-      icon: 'ClipboardList',
-      cache: true,
-      requiresAuth: true,
-    },
-  },
-  {
-    key: 'workspace.assets',
-    path: '/assets',
-    component: AssetLibraryPage,
-    meta: {
-      title: '素材库',
-      icon: 'FolderOpen',
-      cache: true,
-      requiresAuth: true,
-    },
-  },
+  // {
+  //   key: 'workspace.tasks',
+  //   path: '/tasks',
+  //   component: TaskRecordsPage,
+  //   meta: {
+  //     title: '任务记录',
+  //     icon: 'ClipboardList',
+  //     cache: true,
+  //     requiresAuth: true,
+  //   },
+  // },
+  // {
+  //   key: 'workspace.assets',
+  //   path: '/assets',
+  //   component: AssetLibraryPage,
+  //   meta: {
+  //     title: '素材库',
+  //     icon: 'FolderOpen',
+  //     cache: true,
+  //     requiresAuth: true,
+  //   },
+  // },
 ]
 
 export function getRouteByKey(routeKey: RouteKey): AppRoute {

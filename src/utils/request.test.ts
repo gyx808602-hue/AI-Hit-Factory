@@ -182,4 +182,38 @@ describe("request client", () => {
 
     expect(seenContentTypes).not.toEqual(["application/json;charset=utf-8"]);
   });
+
+  it("treats B0001 as an expired login code", async () => {
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      onAuthExpired,
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+        const response: AxiosResponse = {
+          config: requestConfig,
+          data: {
+            code: "B0001",
+            data: null,
+            msg: "登录已失效",
+          },
+          headers: {},
+          status: 401,
+          statusText: "Unauthorized",
+        };
+
+        throw {
+          config: requestConfig,
+          isAxiosError: true,
+          name: "AxiosError",
+          message: "Request failed with status code 401",
+          response,
+          toJSON: () => ({}),
+        };
+      },
+    });
+
+    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+    expect(onAuthExpired).toHaveBeenCalledWith("登录已过期，请重新登录");
+  });
 });

@@ -209,7 +209,36 @@ describe("VideoRemixTaskDetailPage", () => {
 
     const horizontalFields = screen.getByTestId("video-remix-direction-horizontal-fields");
     expect(horizontalFields.className).toContain("grid");
+    expect(horizontalFields.className).toContain("w-full");
+    expect(horizontalFields.className).toContain("gap-6");
     expect(horizontalFields.className).toContain("xl:grid-cols-2");
+  });
+
+  it("renders aligned label rows for the horizontal direction fields", async () => {
+    renderDetailPage();
+
+    expect(await screen.findByTestId("video-remix-step-materials")).toBeInTheDocument();
+
+    const horizontalFields = screen.getByTestId("video-remix-direction-horizontal-fields");
+    const formItemLabels = horizontalFields.querySelectorAll(".ant-form-item-label");
+    const directionPlaceholder = horizontalFields.querySelector(".inline-flex.h-\\[32px\\].w-\\[108px\\]");
+
+    expect(formItemLabels).toHaveLength(2);
+    expect(directionPlaceholder).not.toBeNull();
+  });
+
+  it("renders matching fixed heights for the voiceover and direction textareas", async () => {
+    renderDetailPage();
+
+    expect(await screen.findByTestId("video-remix-step-materials")).toBeInTheDocument();
+
+    const voiceoverTextarea = screen.getByDisplayValue("voiceover script");
+    const directionTextarea = screen.getByDisplayValue("direction summary");
+
+    expect(voiceoverTextarea.className).toContain("h-[132px]");
+    expect(voiceoverTextarea.className).toContain("resize-none");
+    expect(directionTextarea.className).toContain("h-[132px]");
+    expect(directionTextarea.className).toContain("resize-none");
   });
 
   it("renders reference video preview, audio preview and asset image previews", async () => {
@@ -230,6 +259,22 @@ describe("VideoRemixTaskDetailPage", () => {
     const characterImages = screen.getAllByTestId("video-remix-character-image-preview");
     expect(characterImages).toHaveLength(1);
     expect(characterImages[0]).toHaveAttribute("src", "https://example.com/character.png");
+  });
+
+  it("shows a required marker and helper text for the reference video", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      form: {
+        ...buildBaseTaskDetail().form,
+        referenceVideoUrl: "",
+      },
+    });
+
+    renderDetailPage();
+
+    expect(await screen.findByTestId("video-remix-step-materials")).toBeInTheDocument();
+    expect(screen.getByTestId("video-remix-reference-video-required-mark")).toHaveTextContent("*");
+    expect(screen.getByText("参考视频为必填项，请先上传参考视频。")).toBeInTheDocument();
   });
 
   it("uploads reference video, product image, character image and audio through upload components", async () => {
@@ -406,6 +451,32 @@ describe("VideoRemixTaskDetailPage", () => {
     expect(await screen.findByTestId("video-remix-step-prompt")).toBeInTheDocument();
   });
 
+  it("blocks moving to the prompt step when the reference video is empty", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      form: {
+        ...buildBaseTaskDetail().form,
+        referenceVideoUrl: "",
+        productImageUrls: [],
+        characterImageUrls: [],
+        audioUrl: "",
+      },
+    });
+
+    renderDetailPage();
+
+    expect(await screen.findByTestId("video-remix-step-materials")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
+
+    await waitFor(() => {
+      expect(detailPageMocks.saveVideoRemixTaskForm).not.toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText("请先上传参考视频")).toBeInTheDocument();
+    expect(screen.getByTestId("video-remix-reference-video-error")).toHaveTextContent("请先上传参考视频");
+    expect(screen.getByTestId("video-remix-step-materials")).toBeInTheDocument();
+  });
+
   it("blocks moving to the next step when required content fields are empty", async () => {
     renderDetailPage();
 
@@ -435,7 +506,7 @@ describe("VideoRemixTaskDetailPage", () => {
     renderDetailPage();
 
     expect(await screen.findByTestId("video-remix-step-materials")).toBeInTheDocument();
-    expect(screen.getAllByTestId("video-remix-product-image-preview")).toHaveLength(1);
+    expect(await screen.findAllByTestId("video-remix-product-image-preview")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "删除商品图" }));
     await waitFor(() => {
@@ -529,6 +600,23 @@ describe("VideoRemixTaskDetailPage", () => {
     expect(scrollBody.className).toContain("min-h-0");
     expect(scrollBody.className).toContain("overflow-y-auto");
     expect(stepActions.className).toContain("sticky");
+  });
+
+  it("moves header actions into the detail panel and removes the outer page title", async () => {
+    const { container } = renderDetailPage();
+
+    const detailPanel = await screen.findByTestId("video-remix-detail-panel");
+    const panelHeader = screen.getByTestId("video-remix-panel-header");
+    const pageHeaderShell = panelHeader.parentElement?.parentElement as HTMLElement | null;
+    const pageShellRoot = container.firstElementChild as HTMLElement;
+
+    expect(pageShellRoot.textContent).not.toContain("追爆任务详情");
+    expect(detailPanel.textContent).toContain("返回列表");
+    expect(detailPanel.textContent).toContain("刷新详情");
+    expect(detailPanel.textContent).toContain("编辑视频追爆任务");
+    expect(pageHeaderShell).not.toBeNull();
+    expect(pageHeaderShell?.className).toContain("px-3");
+    expect(pageHeaderShell?.className).toContain("py-3");
   });
 
   it("removes product image and character image from previews and save payload", async () => {
@@ -638,7 +726,7 @@ describe("VideoRemixTaskDetailPage", () => {
 
     expect(await screen.findByDisplayValue("existing generated prompt")).toBeInTheDocument();
     expect(
-      screen.getByText(/当前版本先支持本地编辑预览/),
+      screen.getByTestId("video-remix-editable-prompt-input"),
     ).toBeInTheDocument();
   });
 
@@ -646,8 +734,8 @@ describe("VideoRemixTaskDetailPage", () => {
     renderDetailPage();
     await goToPromptStep();
 
-    expect(screen.getByText("当前还没有生成 Prompt")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "生成 Prompt" }));
+    expect(screen.getByPlaceholderText(/当前还没有生成提示词/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
 
     await waitFor(() => {
       expect(detailPageMocks.saveVideoRemixTaskForm).toHaveBeenCalled();
@@ -671,7 +759,7 @@ describe("VideoRemixTaskDetailPage", () => {
     await goToPromptStep();
     detailPageMocks.saveVideoRemixTaskForm.mockClear();
 
-    fireEvent.change(screen.getByLabelText("生成的 Prompt"), {
+    fireEvent.change(screen.getByTestId("video-remix-editable-prompt-input"), {
       target: { value: "" },
     });
     fireEvent.click(screen.getByRole("button", { name: /下一步/ }));
@@ -680,7 +768,7 @@ describe("VideoRemixTaskDetailPage", () => {
       expect(detailPageMocks.saveVideoRemixTaskForm).not.toHaveBeenCalled();
     });
 
-    expect(await screen.findByText("请先生成或填写 Prompt")).toBeInTheDocument();
+    expect(await screen.findByText("请先生成或填写提示词")).toBeInTheDocument();
     expect(screen.getByTestId("video-remix-step-prompt")).toBeInTheDocument();
   });
 
@@ -718,7 +806,7 @@ describe("VideoRemixTaskDetailPage", () => {
     renderDetailPage();
     await goToPromptStep();
 
-    const promptButton = await screen.findByRole("button", { name: "生成 Prompt" });
+    const promptButton = await screen.findByRole("button", { name: "生成提示词" });
     const nextButton = screen.getByRole("button", { name: /下一步/ });
 
     fireEvent.click(promptButton);
@@ -744,6 +832,250 @@ describe("VideoRemixTaskDetailPage", () => {
     });
   });
 
+  it("disables the editable prompt input while regenerate prompt remains in progress", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    detailPageMocks.generateVideoRemixTaskPrompt.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      status: 1,
+      statusLabel: "处理中",
+      progress: 50,
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    renderDetailPage();
+    await goToPromptStep();
+
+    const promptInput = screen.getByTestId(
+      "video-remix-editable-prompt-input",
+    ) as HTMLTextAreaElement;
+
+    expect(promptInput).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
+
+    await waitFor(() => {
+      expect(detailPageMocks.generateVideoRemixTaskPrompt).toHaveBeenCalledWith("101");
+    });
+
+    await waitFor(() => {
+      expect(promptInput).toBeDisabled();
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("50%");
+    });
+  });
+
+  it("keeps showing prompt generation progress from the generate-prompt response even when progress is 0", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    detailPageMocks.generateVideoRemixTaskPrompt.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      status: 0,
+      statusLabel: "待处理",
+      progress: 0,
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    renderDetailPage();
+    await goToPromptStep();
+
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
+
+    await waitFor(() => {
+      expect(detailPageMocks.generateVideoRemixTaskPrompt).toHaveBeenCalledWith("101");
+    });
+
+    expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("0%");
+  });
+
+  it("does not finish prompt progress just because an old generated prompt exists", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    detailPageMocks.generateVideoRemixTaskPrompt.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      statusLabel: undefined,
+      progress: 0,
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    renderDetailPage();
+    await goToPromptStep();
+
+    const promptInput = screen.getByTestId(
+      "video-remix-editable-prompt-input",
+    ) as HTMLTextAreaElement;
+
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
+
+    await waitFor(() => {
+      expect(detailPageMocks.generateVideoRemixTaskPrompt).toHaveBeenCalledWith("101");
+    });
+
+    expect(promptInput).toBeDisabled();
+    expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("0%");
+  });
+
+  it("updates prompt progress from detail polling and hides it after completion", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValueOnce({
+      ...buildBaseTaskDetail(),
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    detailPageMocks.refreshVideoRemixTask
+      .mockResolvedValueOnce({
+        ...buildBaseTaskDetail(),
+        status: 1,
+        statusLabel: "处理中",
+        progress: 65,
+        generatedPrompt: "existing generated prompt",
+        promptProvider: "openai",
+        promptModel: "gpt-4.1",
+        promptCheckPass: true,
+      })
+      .mockResolvedValueOnce({
+        ...buildBaseTaskDetail(),
+        status: 2,
+        statusLabel: "已完成",
+        progress: 100,
+        generatedPrompt: "final generated prompt",
+        promptProvider: "openai",
+        promptModel: "gpt-4.1",
+        promptCheckPass: true,
+      });
+
+    detailPageMocks.generateVideoRemixTaskPrompt.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      status: 1,
+      statusLabel: "处理中",
+      progress: 20,
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    renderDetailPage();
+    await goToPromptStep();
+
+    const promptInput = screen.getByTestId(
+      "video-remix-editable-prompt-input",
+    ) as HTMLTextAreaElement;
+
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
+
+    await waitFor(() => {
+      expect(promptInput).toBeDisabled();
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("20%");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "刷新详情" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("65%");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "刷新详情" }));
+
+    await waitFor(() => {
+      expect(promptInput).not.toBeDisabled();
+      expect(screen.getByTestId("video-remix-prompt-progress")).not.toHaveTextContent("100%");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("100%");
+    }, { timeout: 2200 });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("video-remix-prompt-progress")).not.toBeInTheDocument();
+    }, { timeout: 3200 });
+  });
+
+  it("smoothly advances prompt progress while waiting for the next status refresh", async () => {
+    let resolveGeneratePrompt:
+      | ((value: ReturnType<typeof buildBaseTaskDetail> & {
+          generatedPrompt: string;
+          promptProvider: string;
+          promptModel: string;
+          promptCheckPass: boolean;
+        }) => void)
+      | undefined;
+
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    detailPageMocks.generateVideoRemixTaskPrompt.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGeneratePrompt = resolve;
+        }),
+    );
+
+    renderDetailPage();
+    await goToPromptStep();
+
+    fireEvent.click(screen.getByRole("button", { name: "生成提示词" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("0%");
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("1%");
+      },
+      { timeout: 2200 },
+    );
+
+    resolveGeneratePrompt?.({
+      ...buildBaseTaskDetail(),
+      status: 1,
+      statusLabel: "处理中",
+      progress: 20,
+      generatedPrompt: "existing generated prompt",
+      promptProvider: "openai",
+      promptModel: "gpt-4.1",
+      promptCheckPass: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("video-remix-prompt-progress")).toHaveTextContent("20%");
+    });
+  });
+
   it("renders video compare section after refresh", async () => {
     renderDetailPage();
 
@@ -761,6 +1093,59 @@ describe("VideoRemixTaskDetailPage", () => {
     expect(screen.getByText("视频地址：https://example.com/result.mp4")).toBeInTheDocument();
     expect(screen.getByText("封面地址：https://example.com/cover.png")).toBeInTheDocument();
     expect(screen.getByText("时长：15 秒")).toBeInTheDocument();
+  });
+
+  it("keeps the reference video preview in step 3 when refresh response omits form data", async () => {
+    detailPageMocks.refreshVideoRemixTask.mockResolvedValue({
+      id: 101,
+      name: "Remix Task",
+      status: 2,
+      statusLabel: "已完成",
+      progress: 100,
+      generatedPrompt: "generated prompt",
+      videoUrl: "https://example.com/result.mp4",
+      coverUrl: "https://example.com/cover.png",
+      duration: 15,
+    });
+
+    renderDetailPage();
+
+    expect(await screen.findByDisplayValue("Remix Task")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "刷新详情" }));
+
+    await waitFor(() => {
+      expect(detailPageMocks.refreshVideoRemixTask).toHaveBeenCalledWith("101");
+    });
+
+    await goToVideoStep();
+
+    const referenceVideo = screen
+      .getByTestId("video-remix-reference-video-compare")
+      .querySelector("video");
+
+    expect(referenceVideo).not.toBeNull();
+    expect(referenceVideo).toHaveAttribute("src", "https://example.com/source.mp4");
+  });
+
+  it("renders the step 3 reference video from top-level task data when form omits it", async () => {
+    detailPageMocks.getVideoRemixTaskDetail.mockResolvedValue({
+      ...buildBaseTaskDetail(),
+      referenceVideoUrl: "https://example.com/top-level-source.mp4",
+      form: {
+        ...buildBaseTaskDetail().form,
+        referenceVideoUrl: undefined,
+      },
+    });
+
+    renderDetailPage();
+    await goToVideoStep();
+
+    const referenceVideo = screen
+      .getByTestId("video-remix-reference-video-compare")
+      .querySelector("video");
+
+    expect(referenceVideo).not.toBeNull();
+    expect(referenceVideo).toHaveAttribute("src", "https://example.com/top-level-source.mp4");
   });
 
   it("renders reference video previews with a standard aspect ratio", async () => {

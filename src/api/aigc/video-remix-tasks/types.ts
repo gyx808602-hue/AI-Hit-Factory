@@ -38,6 +38,7 @@ export interface VideoRemixTask {
   progress?: number;
   errReason?: string;
   targetVideoModel?: string;
+  referenceVideoUrl?: string;
   generatedPrompt?: string;
   promptProvider?: string;
   promptModel?: string;

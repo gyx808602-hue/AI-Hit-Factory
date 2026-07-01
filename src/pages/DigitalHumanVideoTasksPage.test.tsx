@@ -401,6 +401,16 @@ describe("DigitalHumanVideoTasksPage", () => {
     expect(screen.getByTestId("digital-human-video-preview-empty-background-tip")).toBeInTheDocument();
   });
 
+  it("uses a plain color stage without the empty-background light overlay", async () => {
+    renderTaskPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建数字人视频" }));
+
+    const previewStage = await screen.findByTestId("digital-human-video-preview-stage");
+
+    expect(previewStage.querySelector('[class*="radial-gradient"]')).toBeNull();
+  });
+
   it("shows a richer empty state before selecting a digital human", async () => {
     renderTaskPage();
 

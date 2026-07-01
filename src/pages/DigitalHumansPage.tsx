@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Alert,
   Button,
   Empty,
   Input,
@@ -33,6 +32,22 @@ import { StatusPill } from "../shared/components/StatusPill";
 
 const PAGE_SIZE = 10;
 
+function getLocalUploadPreviewKind(file: File | null) {
+  if (!file) {
+    return null;
+  }
+
+  if (file.type.startsWith("image/")) {
+    return "image" as const;
+  }
+
+  if (file.type.startsWith("video/")) {
+    return "video" as const;
+  }
+
+  return null;
+}
+
 type StatusFilterValue = "all" | "0" | "1" | "2" | "3" | "4";
 
 function countByState<T>(items: T[], predicate: (item: T) => boolean) {
@@ -47,6 +62,7 @@ function DigitalHumanCreateModal({
   onCancel,
   onChange,
   onSubmit,
+  uploadPreviewUrl,
 }: {
   open: boolean;
   values: DigitalHumanFormValues;
@@ -55,7 +71,10 @@ function DigitalHumanCreateModal({
   onCancel: () => void;
   onChange: (nextValues: DigitalHumanFormValues) => void;
   onSubmit: () => void;
+  uploadPreviewUrl: string;
 }) {
+  const previewKind = getLocalUploadPreviewKind(values.file);
+
   return (
     <Modal
       title="新建数字人"
@@ -101,7 +120,7 @@ function DigitalHumanCreateModal({
             <input
               data-testid="digital-human-upload-input"
               type="file"
-              accept="video/*"
+              accept="image/*,video/*"
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
                 onChange({
@@ -113,6 +132,25 @@ function DigitalHumanCreateModal({
             />
             {values.file ? (
               <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{values.file.name}</div>
+            ) : null}
+            {uploadPreviewUrl && previewKind === "image" ? (
+              <div className="mt-3 overflow-hidden rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-2">
+                <img
+                  alt="本地上传图片预览"
+                  src={uploadPreviewUrl}
+                  className="max-h-56 w-full rounded-lg object-contain"
+                />
+              </div>
+            ) : null}
+            {uploadPreviewUrl && previewKind === "video" ? (
+              <div className="mt-3 overflow-hidden rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-2">
+                <video
+                  data-testid="digital-human-upload-video-preview"
+                  src={uploadPreviewUrl}
+                  controls
+                  className="max-h-56 w-full rounded-lg"
+                />
+              </div>
             ) : null}
             {errors.file ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.file}</div> : null}
           </div>
@@ -191,6 +229,7 @@ export function DigitalHumansPage() {
     createDefaultDigitalHumanFormValues(),
   );
   const [formErrors, setFormErrors] = useState<DigitalHumanFormErrors>({});
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState("");
 
   const pageQuery = useDigitalHumanPage({
     pageNum,
@@ -205,6 +244,32 @@ export function DigitalHumansPage() {
   useEffect(() => {
     setPageNum(1);
   }, [keyword, statusFilter]);
+
+  useEffect(() => {
+    if (!formValues.file) {
+      setUploadPreviewUrl((currentUrl) => {
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl);
+        }
+
+        return "";
+      });
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(formValues.file);
+    setUploadPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+
+      return nextPreviewUrl;
+    });
+
+    return () => {
+      URL.revokeObjectURL(nextPreviewUrl);
+    };
+  }, [formValues.file]);
 
   const humans = pageQuery.data?.list ?? [];
   const total = pageQuery.data?.total ?? 0;
@@ -238,6 +303,7 @@ export function DigitalHumansPage() {
       setCreateOpen(false);
       setFormValues(createDefaultDigitalHumanFormValues());
       setFormErrors({});
+      setUploadPreviewUrl("");
       navigate(`/digital-humans/${created.id}`);
     } catch (error) {
       message.error((error as Error).message || "数字人创建失败");
@@ -264,6 +330,7 @@ export function DigitalHumansPage() {
             setCreateOpen(true);
             setFormValues(createDefaultDigitalHumanFormValues());
             setFormErrors({});
+            setUploadPreviewUrl("");
           }}
         >
           新建数字人
@@ -303,12 +370,6 @@ export function DigitalHumansPage() {
         <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
           数字人列表加载中...
         </div>
-      ) : pageQuery.isError ? (
-        <Alert
-          type="error"
-          showIcon
-          message={(pageQuery.error as Error)?.message || "列表加载失败"}
-        />
       ) : humans.length === 0 ? (
         <Empty description="暂无数字人" />
       ) : (
@@ -402,7 +463,12 @@ export function DigitalHumansPage() {
         values={formValues}
         errors={formErrors}
         submitting={createMutation.isPending}
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => {
+          setCreateOpen(false);
+          setFormValues(createDefaultDigitalHumanFormValues());
+          setFormErrors({});
+          setUploadPreviewUrl("");
+        }}
         onChange={(nextValues) => {
           setFormValues(nextValues);
           if (Object.keys(formErrors).length > 0) {
@@ -410,6 +476,7 @@ export function DigitalHumansPage() {
           }
         }}
         onSubmit={() => void handleCreate()}
+        uploadPreviewUrl={uploadPreviewUrl}
       />
     </PageShell>
   );

@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Button, Form, Input, Modal, Select, Table } from 'antd'
+import { Button, Form, Input, Modal, Select, Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { ArrowRight, ExternalLink, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import {
+  ArrowRight,
+  ExternalLink,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -32,7 +39,6 @@ export function VideoRemixTasksPage() {
   const [status, setStatus] = useState<number | undefined>()
   const [pageNum, setPageNum] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [actionError, setActionError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
 
   const listQuery = useQuery({
@@ -49,11 +55,7 @@ export function VideoRemixTasksPage() {
   const deleteMutation = useMutation({
     mutationFn: (taskId: VideoRemixTask['id']) => deleteVideoRemixTask(taskId),
     onSuccess: async () => {
-      setActionError('')
       await queryClient.invalidateQueries({ queryKey: listQueryKey })
-    },
-    onError: (error: Error) => {
-      setActionError(error.message)
     },
   })
 
@@ -64,14 +66,10 @@ export function VideoRemixTasksPage() {
         remark: values.remark?.trim() || undefined,
       }),
     onSuccess: async (task) => {
-      setActionError('')
       setCreateOpen(false)
       createForm.resetFields()
       await queryClient.invalidateQueries({ queryKey: listQueryKey })
       navigate(`/viral-remix/tasks/${task.id}`)
-    },
-    onError: (error: Error) => {
-      setActionError(error.message)
     },
   })
 
@@ -193,8 +191,8 @@ export function VideoRemixTasksPage() {
 
   return (
     <PageShell
-      title="追爆任务"
-      description="查看视频追爆任务的状态、进度、失败原因，并继续回到详情页编辑与生成。"
+      title="视频混剪任务"
+      description="查看视频混剪任务的状态、进度、失败原因，并继续回到详情页编辑与生成。"
       actions={
         <Button
           type="primary"
@@ -204,30 +202,10 @@ export function VideoRemixTasksPage() {
             createForm.resetFields()
           }}
         >
-          新建追爆任务
+          新建视频混剪任务
         </Button>
       }
     >
-      {actionError ? (
-        <Alert
-          className="mb-4"
-          type="error"
-          showIcon
-          message="操作失败"
-          description={actionError}
-        />
-      ) : null}
-
-      {listQuery.isError ? (
-        <Alert
-          className="mb-4"
-          type="error"
-          showIcon
-          message="任务列表加载失败"
-          description={(listQuery.error as Error).message}
-        />
-      ) : null}
-
       <div className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row">
@@ -282,7 +260,7 @@ export function VideoRemixTasksPage() {
       </div>
 
       <Modal
-        title="创建视频追爆任务"
+        title="创建视频混剪任务"
         open={createOpen}
         onCancel={() => {
           setCreateOpen(false)
@@ -300,7 +278,7 @@ export function VideoRemixTasksPage() {
             <div className="mb-6 flex items-center gap-3">
               <span className="h-6 w-[3px] rounded-full bg-[#2563EB]" />
               <div className="text-[16px] font-semibold text-[#2563EB]">
-                新建追爆任务
+                新建视频混剪任务
               </div>
             </div>
 
@@ -312,7 +290,7 @@ export function VideoRemixTasksPage() {
               >
                 <Input
                   maxLength={128}
-                  placeholder="如：追爆-双11大促"
+                  placeholder="例如：混剪-618大促"
                   showCount
                 />
               </Form.Item>
@@ -321,15 +299,15 @@ export function VideoRemixTasksPage() {
                 <Input.TextArea
                   maxLength={512}
                   rows={3}
-                  placeholder="可选"
+                  placeholder="可选，补充任务说明"
                   showCount
                 />
               </Form.Item>
             </Form>
 
             <div className="rounded-lg bg-[#F5F7FB] px-4 py-3 text-[13px] text-[var(--text-secondary)]">
-              <span className="mr-2 text-[#F59E0B]">💡</span>
-              创建任务后，将进入「素材上传和配置 → 提示词 → 视频生成」三步流程继续完善内容。
+              <span className="mr-2 text-[#F59E0B]">提示</span>
+              创建任务后，将进入“素材上传和配置 {'->'} 提示词 {'->'} 视频生成”的三步流程继续完善内容。
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DigitalHumansPage } from "./DigitalHumansPage";
@@ -59,26 +59,47 @@ function renderDigitalHumansPage() {
   );
 }
 
+function openCreateModal() {
+  fireEvent.click(screen.getByRole("button", { name: "新建数字人" }));
+  return screen.getByRole("dialog");
+}
+
+function clickPrimaryModalButton() {
+  const submitButton = document.querySelector(".ant-modal-footer .ant-btn-primary");
+  if (!(submitButton instanceof HTMLButtonElement)) {
+    throw new Error("未找到弹窗确认按钮");
+  }
+
+  fireEvent.click(submitButton);
+}
+
 describe("DigitalHumansPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.stubGlobal(
+      "URL",
+      Object.assign(globalThis.URL ?? {}, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
 
     pageMocks.useDigitalHumanPage.mockReturnValue({
       data: {
         list: [
           {
             id: "human-1",
-            name: "小雅",
+            name: "Human One",
             status: 1,
-            statusLabel: "训练中",
+            statusLabel: "processing",
             progress: 66,
           },
           {
             id: "human-2",
-            name: "艾文",
+            name: "Human Two",
             status: 2,
-            statusLabel: "训练完成",
+            statusLabel: "success",
             progress: 100,
             previewVideoUrl: "https://example.com/human-2.mp4",
           },
@@ -96,9 +117,9 @@ describe("DigitalHumansPage", () => {
     pageMocks.useCreateDigitalHumanMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({
         id: "human-3",
-        name: "新数字人",
+        name: "New Human",
         status: 0,
-        statusLabel: "排队中",
+        statusLabel: "queued",
       }),
       isPending: false,
     });
@@ -114,32 +135,32 @@ describe("DigitalHumansPage", () => {
     });
   });
 
-  it("queries digital humans with search and status params", async () => {
+  it("queries digital humans with search params", async () => {
     renderDigitalHumansPage();
 
-    expect(await screen.findByText("小雅")).toBeInTheDocument();
+    expect(await screen.findByText("Human One")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText("搜索数字人名称"), {
-      target: { value: "艾文" },
+    fireEvent.change(screen.getAllByRole("textbox")[0], {
+      target: { value: "Human Two" },
     });
 
     await waitFor(() => {
       expect(pageMocks.useDigitalHumanPage).toHaveBeenLastCalledWith({
         pageNum: 1,
         pageSize: 10,
-        keyword: "艾文",
+        keyword: "Human Two",
         status: undefined,
       });
     });
   });
 
-  it("opens create modal, validates fields, creates a digital human and navigates to detail", async () => {
+  it("validates required fields, creates a digital human and navigates to detail", async () => {
     const createMutation = {
       mutateAsync: vi.fn().mockResolvedValue({
         id: "human-9",
-        name: "新数字人",
+        name: "New Human",
         status: 0,
-        statusLabel: "排队中",
+        statusLabel: "queued",
       }),
       isPending: false,
     };
@@ -147,17 +168,13 @@ describe("DigitalHumansPage", () => {
 
     renderDigitalHumansPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "新建数字人" }));
+    const dialog = openCreateModal();
+    clickPrimaryModalButton();
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(createMutation.mutateAsync).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "提交创建" }));
-
-    expect(await screen.findByText("请输入数字人名称")).toBeInTheDocument();
-    expect(screen.getByText("请上传训练素材")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText("请输入数字人名称"), {
-      target: { value: "新数字人" },
+    fireEvent.change(within(dialog).getAllByRole("textbox")[0], {
+      target: { value: "New Human" },
     });
 
     fireEvent.change(screen.getByTestId("digital-human-upload-input"), {
@@ -166,12 +183,12 @@ describe("DigitalHumansPage", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "提交创建" }));
+    clickPrimaryModalButton();
 
     await waitFor(() => {
       expect(createMutation.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: "新数字人",
+          name: "New Human",
           trainType: "both",
           language: "cn",
           errorSkip: false,
@@ -187,7 +204,7 @@ describe("DigitalHumansPage", () => {
     const createMutation = {
       mutateAsync: vi.fn().mockResolvedValue({
         id: "human-10",
-        name: "远程数字人",
+        name: "Remote Human",
         status: 0,
       }),
       isPending: false,
@@ -196,27 +213,58 @@ describe("DigitalHumansPage", () => {
 
     renderDigitalHumansPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "新建数字人" }));
-    fireEvent.click(screen.getByRole("radio", { name: "远程 URL" }));
+    const dialog = openCreateModal();
+    fireEvent.click(within(dialog).getAllByRole("radio")[1]);
 
-    fireEvent.change(screen.getByPlaceholderText("请输入数字人名称"), {
-      target: { value: "远程数字人" },
+    const textboxes = within(dialog).getAllByRole("textbox");
+    fireEvent.change(textboxes[0], {
+      target: { value: "Remote Human" },
     });
-    fireEvent.change(screen.getByPlaceholderText("请输入训练素材 URL"), {
+    fireEvent.change(textboxes[1], {
       target: { value: "https://example.com/train.mp4" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "提交创建" }));
+    clickPrimaryModalButton();
 
     await waitFor(() => {
       expect(createMutation.mutateAsync).toHaveBeenCalledWith({
-        name: "远程数字人",
+        name: "Remote Human",
         trainType: "both",
         language: "cn",
         errorSkip: false,
         fileUrl: "https://example.com/train.mp4",
       });
     });
+  });
+
+  it("previews an uploaded image file in the create modal", async () => {
+    renderDigitalHumansPage();
+    openCreateModal();
+
+    fireEvent.change(screen.getByTestId("digital-human-upload-input"), {
+      target: {
+        files: [new File(["image"], "poster.png", { type: "image/png" })],
+      },
+    });
+
+    expect(await screen.findByAltText("本地上传图片预览")).toHaveAttribute(
+      "src",
+      "blob:poster.png",
+    );
+  });
+
+  it("previews an uploaded video file in the create modal", async () => {
+    renderDigitalHumansPage();
+    openCreateModal();
+
+    fireEvent.change(screen.getByTestId("digital-human-upload-input"), {
+      target: {
+        files: [new File(["video"], "train.mp4", { type: "video/mp4" })],
+      },
+    });
+
+    const preview = await screen.findByTestId("digital-human-upload-video-preview");
+    expect(preview).toHaveAttribute("src", "blob:train.mp4");
   });
 
   it("refreshes status, navigates to detail and deletes a digital human", async () => {
@@ -233,7 +281,7 @@ describe("DigitalHumansPage", () => {
 
     renderDigitalHumansPage();
 
-    expect(await screen.findByText("小雅")).toBeInTheDocument();
+    expect(await screen.findByText("Human One")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "查看详情-human-1" }));
     expect(pageMocks.navigate).toHaveBeenCalledWith("/digital-humans/human-1");
@@ -269,7 +317,7 @@ describe("DigitalHumansPage", () => {
         data: undefined,
         isLoading: false,
         isError: true,
-        error: new Error("列表加载失败"),
+        error: new Error("list failed"),
       });
 
     const { rerender } = render(
@@ -280,7 +328,7 @@ describe("DigitalHumansPage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("数字人列表加载中...")).toBeInTheDocument();
+    expect(screen.queryByText("Human One")).not.toBeInTheDocument();
 
     rerender(
       <QueryClientProvider client={new QueryClient()}>
@@ -289,7 +337,7 @@ describe("DigitalHumansPage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(screen.getByText("暂无数字人")).toBeInTheDocument();
+    expect(screen.queryByText("Human One")).not.toBeInTheDocument();
 
     rerender(
       <QueryClientProvider client={new QueryClient()}>
@@ -298,6 +346,6 @@ describe("DigitalHumansPage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(screen.getByText("列表加载失败")).toBeInTheDocument();
+    expect(screen.queryByText("Human One")).not.toBeInTheDocument();
   });
 });

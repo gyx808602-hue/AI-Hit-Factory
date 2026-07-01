@@ -41,7 +41,7 @@ export function mapTaskDetailToFormValues(task: Partial<VideoRemixTask>): VideoR
     name: task.name ?? "",
     remark: task.remark ?? "",
     targetVideoModel: form?.targetVideoModel ?? task.targetVideoModel ?? DEFAULT_TARGET_VIDEO_MODEL,
-    referenceVideoUrl: form?.referenceVideoUrl ?? "",
+    referenceVideoUrl: form?.referenceVideoUrl ?? task.referenceVideoUrl ?? "",
     productImageUrlsText: joinUrls(form?.productImageUrls),
     characterImageUrlsText: joinUrls(form?.characterImageUrls),
     audioUrl: form?.audioUrl ?? "",

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Alert,
   Button,
   Empty,
   Input,
@@ -405,7 +404,7 @@ function DigitalHumanVideoCreateModal({
                 <div
                   data-testid="digital-human-video-preview-stage"
                   data-preview-bg-color={values.bgColor}
-                  className="relative overflow-hidden rounded-[28px] border border-white/70 shadow-[0_18px_48px_rgba(15,23,42,0.18)]"
+                  className="relative overflow-hidden rounded-[28px] border border-white/70"
                   style={{
                     width: PREVIEW_STAGE_WIDTH,
                     height: PREVIEW_STAGE_HEIGHT,
@@ -420,9 +419,7 @@ function DigitalHumanVideoCreateModal({
                       alt="背景预览"
                       className="absolute inset-0 h-full w-full object-cover"
                     />
-                  ) : (
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#FFFFFF_0%,rgba(255,255,255,0.4)_36%,transparent_70%)]" />
-                  )}
+                  ) : null}
 
                   {!hasBackgroundImage ? (
                     <div
@@ -435,7 +432,7 @@ function DigitalHumanVideoCreateModal({
 
                   <div
                     data-testid="digital-human-video-preview-frame"
-                    className="absolute cursor-move overflow-hidden rounded-[20px] border border-white/70 bg-[#4F9CF9]/20 shadow-[0_12px_24px_rgba(79,156,249,0.26)]"
+                    className="absolute cursor-move overflow-hidden rounded-[20px] border border-white/70 bg-[#4F9CF9]/12"
                     style={{
                       left: frameRect.left,
                       top: frameRect.top,
@@ -871,12 +868,6 @@ export function DigitalHumanVideoTasksPage() {
         <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
           数字人视频任务加载中...
         </div>
-      ) : taskPageQuery.isError ? (
-        <Alert
-          type="error"
-          showIcon
-          message={(taskPageQuery.error as Error)?.message || '列表加载失败'}
-        />
       ) : tasks.length === 0 ? (
         <Empty description="暂无数字人视频任务" />
       ) : (
@@ -949,7 +940,7 @@ export function DigitalHumanVideoTasksPage() {
                       aria-label={`删除任务-${task.id}`}
                       onClick={() => handleDelete(task.id)}
                     >
-                      删除任务
+                      删除任务 
                     </Button>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { ConfigProvider, message, Spin, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { matchPath, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { matchRoutes, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../api/system/auth";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -92,7 +92,15 @@ function DynamicRouteLoading() {
 }
 
 function getActiveRoute(pathname: string, availableRoutes: AppRoute[]) {
-  return availableRoutes.find((route) => matchPath({ path: route.path, end: true }, pathname));
+  const routeMatches = matchRoutes(
+    availableRoutes.map((route) => ({
+      path: route.path,
+      handle: route,
+    })),
+    pathname,
+  );
+
+  return routeMatches?.at(-1)?.route.handle;
 }
 
 function getFallbackRouteState(): DynamicRouteState {

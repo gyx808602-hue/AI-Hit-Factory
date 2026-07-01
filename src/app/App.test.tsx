@@ -180,6 +180,28 @@ describe("App auth routing", () => {
     });
   });
 
+  it("keeps the digital human video task menu selected on the list page", async () => {
+    vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
+    AuthStorage.setAccessToken("access-token");
+
+    renderApp(["/digital-humans/videos"]);
+
+    await waitFor(() => {
+      expect(screen.getByText("数字人视频任务")).toBeInTheDocument();
+    });
+
+    const videoTaskMenuButton = screen.getByRole("button", { name: /数字人视频任务/i });
+    const digitalHumanMenuButton = screen.getByRole("button", { name: /数字人管理/i });
+
+    expect(videoTaskMenuButton).toHaveStyle({
+      background: "rgba(124,92,252,0.16)",
+      color: "#9B7FFF",
+    });
+    expect(digitalHumanMenuButton).toHaveStyle({
+      background: "transparent",
+    });
+  });
+
   it("redirects to login after auth expired event", async () => {
     vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
     AuthStorage.setAccessToken("access-token");
