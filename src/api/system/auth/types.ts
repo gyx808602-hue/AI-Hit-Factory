@@ -9,7 +9,8 @@ export interface CaptchaInfo {
 export interface LoginRequest {
   phone: string;
   password: string;
-  captchaKey: string;
+  captchaKey?: string;
+  captchaId?: string;
   captchaCode: string;
 }
 

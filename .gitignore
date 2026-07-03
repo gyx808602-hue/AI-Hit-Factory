@@ -4,3 +4,16 @@ dist
 vite-dev*.log
 .playwright-mcp/
 dist.zip
+
+# Test and temporary artifacts
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+src/test/
+vitest*.config.ts
+vite.request-test.config.ts
+.env.test
+tmp/
+tmp-*.log
+tmp-*.log.*

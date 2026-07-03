@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite";
 import { getManualChunkName } from "./src/build/manualChunks";
 
 export default defineConfig({
@@ -12,22 +12,6 @@ export default defineConfig({
         manualChunks: getManualChunkName,
       },
     },
-  },
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: "./src/test/setup.ts",
-    include: ["src/__tests_disabled__/**/*.test.ts", "src/__tests_disabled__/**/*.test.tsx"],
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/.{idea,git,cache,output,temp}/**",
-      "src/**/*.test.ts",
-      "src/**/*.test.tsx",
-      "src/**/*.spec.ts",
-      "src/**/*.spec.tsx",
-    ],
-    passWithNoTests: true,
   },
   server: {
    proxy: {
