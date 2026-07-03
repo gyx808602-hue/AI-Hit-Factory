@@ -154,3 +154,41 @@
 - 已确认：`src` 下测试文件数量为 `0`。
 - 构建结果：通过。
 - 额外提示：`npm` 输出 1 个低危审计项，以及全局 npm 配置 `store-dir`、`global-bin-dir` 警告；Vite 输出 `antd-vendor` chunk 超过 900KB 的体积警告，均非本次清理阻塞项。
+
+## 2026-07-03 提交描述与分支同步建议
+
+### 已完成
+
+- 已检查当前分支状态：当前变更位于 `main`，尚未提交。
+- 已检查本地与远端分支：`main`、`develop`、`feature` 当前都基于同一个提交 `2141491`。
+- 已整理本次清理适用的提交描述。
+
+### 当前判断
+
+- 本次清理会影响测试脚本、测试依赖、忽略规则和大量测试文件删除，属于仓库基线清理，建议提交后同步到 `develop` 和 `feature`。
+- 如果不同步，后续从 `develop` 或 `feature` 继续开发时，测试文件和测试依赖会重新出现在分支里，合回 `main` 时容易产生重复删除和锁文件冲突。
+- 不需要同步到历史远端分支 `origin/codex/upload-unified-experience`，除非后续明确还要继续维护那个分支。
+
+### 推荐提交描述
+
+```text
+chore: 清理测试与临时文件
+
+- 删除 src 下测试文件、测试初始化与临时 Vitest 配置
+- 移除未接入当前主入口的预留 API 与重复特性目录
+- 清理 tmp 日志、截图和 .env.test
+- 更新 .gitignore，忽略测试文件、临时测试配置和 tmp 产物
+- 移除测试脚本与测试依赖，并同步 package-lock
+- 补齐登录请求 captchaId 类型以保持构建通过
+
+验证：
+- npm run typecheck
+- npm run build
+```
+
+### 下一步
+
+1. 在 `main` 提交本次清理。
+2. 将 `main` 合并或快进同步到 `develop`。
+3. 将 `develop` 合并或快进同步到 `feature`。
+4. 推送 `main`、`develop`、`feature` 到远端。
