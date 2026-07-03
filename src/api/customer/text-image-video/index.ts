@@ -51,7 +51,7 @@ export function getTextImageVideoTaskPage(
   clientArg?: DataRequestClient,
 ) {
   const { client, config } = resolveRequestArgs(configOrClient, clientArg);
-  return client.get<TextImageVideoTaskPageResponse>("/user-api/customer/text-image-video/tasks", {
+  return client.get<TextImageVideoTaskPageResponse>("/text-image-video/tasks", {
     params,
     ...config,
   });
@@ -61,7 +61,7 @@ export function createTextImageVideoTask(
   data: TextImageVideoCreateRequest,
   client: DataRequestClient = request,
 ) {
-  return client.post<TextImageVideoTask>("/user-api/customer/text-image-video/tasks", data);
+  return client.post<TextImageVideoTask>("/text-image-video/tasks", data);
 }
 
 export function generateTextImageVideoPrompt(
@@ -80,9 +80,9 @@ export function getTextImageVideoTaskDetail(
   clientArg?: DataRequestClient,
 ) {
   const { client, config } = resolveRequestArgs(configOrClient, clientArg);
-  return client.get<TextImageVideoTask>(`/user-api/customer/text-image-video/tasks/${id}`, config);
+  return client.get<TextImageVideoTask>(`/text-image-video/tasks/${id}`, config);
 }
 
 export function deleteTextImageVideoTask(id: Id, client: DataRequestClient = request) {
-  return client.delete<void>(`/user-api/customer/text-image-video/tasks/${id}`);
+  return client.delete<void>(`/text-image-video/tasks/${id}`);
 }

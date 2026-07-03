@@ -10,6 +10,7 @@ export type RouteKey =
   | "content.viralRemix"
   | "content.viralRemixTasks"
   | "content.viralRemixTaskDetail"
+  | "content.customisedAudios"
   | "content.digitalHumans"
   | "content.digitalHumanDetail"
   | "content.digitalHumanVideoTasks"

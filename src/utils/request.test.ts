@@ -1,6 +1,6 @@
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
-import { createRequestClient, RequestBusinessError } from "./request";
+import { createRequestClient } from "./request";
 
 function createAdapter(handler: (config: InternalAxiosRequestConfig) => AxiosResponse): AxiosAdapter {
   return async (config) => handler(config as InternalAxiosRequestConfig);
@@ -183,9 +183,11 @@ describe("request client", () => {
     expect(seenContentTypes).not.toEqual(["application/json;charset=utf-8"]);
   });
 
-  it("treats B0001 as an expired login code", async () => {
+  it("treats B0001 as a normal business error without forcing relogin", async () => {
     const onAuthExpired = vi.fn();
+    const notifyError = vi.fn();
     const client = createRequestClient({
+      notifyError,
       onAuthExpired,
       adapter: async (config) => {
         const requestConfig = config as InternalAxiosRequestConfig;
@@ -212,8 +214,12 @@ describe("request client", () => {
       },
     });
 
-    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
-    expect(onAuthExpired).toHaveBeenCalledTimes(1);
-    expect(onAuthExpired).toHaveBeenCalledWith("登录已过期，请重新登录");
+    await expect(client.get("/secure")).rejects.toMatchObject({
+      code: "B0001",
+      message: "登录已失效",
+    });
+    expect(notifyError).toHaveBeenCalledTimes(1);
+    expect(notifyError).toHaveBeenCalledWith("登录已失效");
+    expect(onAuthExpired).not.toHaveBeenCalled();
   });
 });

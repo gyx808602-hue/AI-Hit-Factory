@@ -62,7 +62,7 @@ function TaskCard({
           />
           <h3 className="m-0 text-[14px] font-medium text-[var(--text-primary)]">{task.prompt}</h3>
           <div className="text-[12px] text-[var(--text-muted)]">
-            模型：{task.model || "seedance2.0"} · 进度：{task.progress ?? 0}%
+            进度：{task.progress ?? 0}%
           </div>
         </div>
         <div className="flex gap-2">

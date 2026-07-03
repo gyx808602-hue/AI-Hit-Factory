@@ -9,7 +9,7 @@ import type {
   VideoRemixTaskQuery,
 } from "./types";
 
-const VIDEO_REMIX_TASKS_BASE_URL = "/user-api/aigc/video-remix-tasks";
+const VIDEO_REMIX_TASKS_BASE_URL = "/video-remix-tasks";
 
 function toPageData(data: VideoRemixTaskPageResponse): VideoRemixTaskPageData {
   return {

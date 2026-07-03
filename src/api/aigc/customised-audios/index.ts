@@ -8,7 +8,7 @@ import type {
   CustomisedAudioQuery,
 } from "./types";
 
-const CUSTOMISED_AUDIOS_BASE_URL = "/user-api/aigc/customised-audios";
+const CUSTOMISED_AUDIOS_BASE_URL = "/customised-audios";
 
 function toPageData(data: CustomisedAudioBackendPageResponse): CustomisedAudioPageData {
   return {

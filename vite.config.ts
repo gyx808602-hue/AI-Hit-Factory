@@ -30,12 +30,15 @@ export default defineConfig({
     passWithNoTests: true,
   },
   server: {
-    proxy: {
-      "/api": {
-        target: "http://192.168.110.40:8000",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
+   proxy: {
+    "/api": {
+      // Target 保持最纯粹的根域名/IP
+      target: "http://192.168.77.204:8000", 
+      // target: "http://47.96.142.28:8000",
+      changeOrigin: true,
+      // 在重写规则里，把 /api 替换成后端实际需要的前缀
+      rewrite: (path) => path.replace(/^\/api/, "/user/user-api/v1"), 
     },
   },
+}
 });

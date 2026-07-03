@@ -169,4 +169,23 @@ describe("dynamicRoutes", () => {
         .map((item) => item.route.key),
     ).toEqual(["content.digitalHumanVideoTasks"]);
   });
+
+  it("maps customised audio backend component into a route", () => {
+    const routes: RouteItem[] = [
+      {
+        path: "/customised-audios",
+        component: "content/customised-audios/index",
+        meta: { title: "音色管理", icon: "Mic2" },
+      },
+    ];
+
+    const result = buildDynamicRouteState(routes);
+
+    expect(result.routes.map((route) => route.key)).toEqual(["content.customisedAudios"]);
+    expect(
+      result.menuItems
+        .filter((item) => item.kind === "route")
+        .map((item) => item.route.key),
+    ).toEqual(["content.customisedAudios"]);
+  });
 });

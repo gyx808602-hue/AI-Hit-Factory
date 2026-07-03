@@ -7,8 +7,7 @@ import type {
   DigitalPersonVideoPageData,
   DigitalPersonVideoQuery,
 } from "./types";
-
-const DIGITAL_PERSON_VIDEOS_BASE_URL = "/user-api/aigc/digital-person-videos";
+const DIGITAL_PERSON_VIDEOS_BASE_URL = "/digital-person-videos"; 
 
 function toPageData(data: DigitalPersonVideoBackendPageResponse): DigitalPersonVideoPageData {
   return {

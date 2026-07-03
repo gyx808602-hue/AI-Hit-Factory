@@ -9,6 +9,7 @@ import type {
   DigitalPersonQuery,
 } from "./types";
 
+const DIGITAL_PERSONS_BASE_URL = "/digital-persons";
 function mapDigitalPersonPageResponse(
   response: DigitalPersonBackendPageResponse,
   params?: DigitalPersonQuery,
@@ -37,7 +38,7 @@ export async function getDigitalPersonPage(
   params?: DigitalPersonQuery,
   client: DataRequestClient = request,
 ) {
-  const response = await client.get<DigitalPersonBackendPageResponse>("/user-api/aigc/digital-persons", {
+  const response = await client.get<DigitalPersonBackendPageResponse>(DIGITAL_PERSONS_BASE_URL, {
     params,
   });
 
@@ -45,15 +46,15 @@ export async function getDigitalPersonPage(
 }
 
 export function getDigitalPersonDetail(id: Id, client: DataRequestClient = request) {
-  return client.get<DigitalPerson>(`/user-api/aigc/digital-persons/${id}`);
+  return client.get<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}/${id}`);
 }
 
 export function refreshDigitalPerson(id: Id, client: DataRequestClient = request) {
-  return client.get<DigitalPerson>(`/user-api/aigc/digital-persons/${id}/refresh`);
+  return client.get<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}/${id}/refresh`);
 }
 
 export function deleteDigitalPerson(id: Id, client: DataRequestClient = request) {
-  return client.delete<void>(`/user-api/aigc/digital-persons/${id}`);
+  return client.delete<void>(`${DIGITAL_PERSONS_BASE_URL}/${id}`);
 }
 
 export function createDigitalPerson(
@@ -66,13 +67,13 @@ export function createDigitalPerson(
     const formData = new FormData();
     formData.append("file", data.file);
 
-    return client.post<DigitalPerson>("/user-api/aigc/digital-persons", formData, {
+    return client.post<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}`, formData, {
       ...uploadConfig(),
       params,
     });
   }
 
-  return client.post<DigitalPerson>("/user-api/aigc/digital-persons", undefined, {
+  return client.post<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}`, undefined, {
     params,
   });
 }

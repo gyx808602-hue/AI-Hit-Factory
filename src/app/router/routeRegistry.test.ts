@@ -56,6 +56,13 @@ describe("routeRegistry", () => {
     expect(taskDetailRoute.meta.hideInMenu).toBe(true);
   });
 
+  it("registers customised audio management route", () => {
+    const route = getRouteByKey("content.customisedAudios");
+
+    expect(route.path).toBe("/customised-audios");
+    expect(route.meta.hideInMenu).not.toBe(true);
+  });
+
   it("registers workspace routes for task records and asset library", () => {
     const taskRecordsRoute = getRouteByKey("workspace.tasks");
     const assetLibraryRoute = getRouteByKey("workspace.assets");

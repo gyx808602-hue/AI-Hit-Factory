@@ -8,9 +8,9 @@
 ## 本轮代码变更
 
 - `src/features/video-remix/form.ts`
-  - `mapTaskDetailToFormValues(...)` 的兜底模型从 `wan2.7-r2v` 改为 `seedance2.0`
+  - `mapTaskDetailToFormValues(...)` 的兜底模型从 `wan2.7-r2v` 改为 `2.0`
 - `src/pages/ViralRemixPage.tsx`
-  - 创建任务后写入草稿时，`targetVideoModel` 默认值改为 `seedance2.0`
+  - 创建任务后写入草稿时，`targetVideoModel` 默认值改为 `2.0`
 - `src/features/video-remix/form.test.ts`
   - 新增“无后端模型值时默认使用 seedance2.0”的断言
 

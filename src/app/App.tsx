@@ -7,6 +7,7 @@ import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
 import { DashboardLayout } from "./layouts/DashboardLayout";
+import { resolveHomeRoutePath } from "./router/homeRoute";
 import { routeRegistry } from "./router/routeRegistry";
 import { resolveRouteAccess } from "./router/routeGuards";
 import type { AppRoute, DynamicRouteState, NavigationItem } from "./router/routeTypes";
@@ -14,21 +15,6 @@ import { useCurrentUserRoutes } from "./router/useCurrentUserRoutes";
 
 function getDefaultWorkspaceRoute(routes: AppRoute[]) {
   return routes.find((route) => !route.meta.hideInMenu) ?? routes[0];
-}
-
-function getFirstMenuRoute(menuItems: NavigationItem[]): AppRoute | undefined {
-  for (const item of menuItems) {
-    if (item.kind === "route") {
-      return item.route;
-    }
-
-    const childRoute = getFirstMenuRoute(item.children);
-    if (childRoute) {
-      return childRoute;
-    }
-  }
-
-  return undefined;
 }
 
 function resolveActiveMenuRoute(
@@ -151,7 +137,7 @@ export function App() {
     : [...publicRoutes, ...fallbackRouteState.routes, ...hiddenProtectedRoutes];
   const activeRoute = getActiveRoute(location.pathname, candidateRoutes);
   const routeAccess = resolveRouteAccess(activeRoute, { hasAccessToken, bypassTokenCheck });
-  const homeRoute = getFirstMenuRoute(dynamicRouteState.menuItems);
+  const homeRoutePath = resolveHomeRoutePath(dynamicRouteState.menuItems, availableRoutes);
   const currentUserName = getCurrentUserDisplayName();
 
   useEffect(() => {
@@ -206,13 +192,18 @@ export function App() {
     return <DynamicRouteLoading />;
   }
 
+  if (!canAccessProtectedRoutes && location.pathname === "/") {
+    const redirect = encodeURIComponent(buildRedirectTarget(location.pathname, location.search));
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+
   if (
     canAccessProtectedRoutes &&
     location.pathname === "/" &&
-    homeRoute &&
-    homeRoute.path !== "/"
+    homeRoutePath &&
+    homeRoutePath !== "/"
   ) {
-    return <Navigate to={homeRoute.path} replace />;
+    return <Navigate to={homeRoutePath} replace />;
   }
 
   if (!routeAccess.allowed) {

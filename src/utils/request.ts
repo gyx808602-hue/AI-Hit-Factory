@@ -14,7 +14,6 @@ export const ApiCode = {
   success: "200",
   successAlt: "00000",
   accessTokenInvalid: "A0230",
-  accessTokenInvalidAlt: "B0001",
   refreshTokenInvalid: "A0231",
   permissionDenied: "A0301",
 } as const;
@@ -73,7 +72,7 @@ function isSuccessfulBusinessCode(code: string) {
 }
 
 function isAccessTokenExpiredCode(code: string) {
-  return code === ApiCode.accessTokenInvalid || code === ApiCode.accessTokenInvalidAlt;
+  return code === ApiCode.accessTokenInvalid;
 }
 
 function getBusinessCode(data: unknown) {

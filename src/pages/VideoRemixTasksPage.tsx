@@ -206,7 +206,7 @@ export function VideoRemixTasksPage() {
         </Button>
       }
     >
-      <div className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row">
             <Input
@@ -241,22 +241,28 @@ export function VideoRemixTasksPage() {
           </Button>
         </div>
 
-        <Table
-          rowKey="id"
-          loading={listQuery.isLoading}
-          columns={columns}
-          dataSource={listQuery.data?.list ?? []}
-          pagination={{
-            current: pageNum,
-            pageSize,
-            total: listQuery.data?.total ?? 0,
-            onChange: (nextPage, nextPageSize) => {
-              setPageNum(nextPage)
-              setPageSize(nextPageSize)
-            },
-          }}
-          scroll={{ x: 980 }}
-        />
+        <div
+          data-testid="video-remix-tasks-table-scroll-region"
+          className="min-h-0 flex-1 overflow-y-auto"
+          style={{ maxHeight: 'calc(100vh - 280px)' }}
+        >
+          <Table
+            rowKey="id"
+            loading={listQuery.isLoading}
+            columns={columns}
+            dataSource={listQuery.data?.list ?? []}
+            pagination={{
+              current: pageNum,
+              pageSize,
+              total: listQuery.data?.total ?? 0,
+              onChange: (nextPage, nextPageSize) => {
+                setPageNum(nextPage)
+                setPageSize(nextPageSize)
+              },
+            }}
+            scroll={{ x: 980 }}
+          />
+        </div>
       </div>
 
       <Modal

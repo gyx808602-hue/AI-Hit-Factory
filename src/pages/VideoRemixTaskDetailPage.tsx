@@ -114,6 +114,7 @@ function mergeTaskDetailPreservingGeneratedState(
     form: {
       ...previousTask.form,
       ...nextTask.form,
+      targetVideoModel:'dreamina-seedance-2-0'
     },
   }
 }
@@ -472,7 +473,6 @@ export function VideoRemixTaskDetailPage() {
       const previousTask = queryClient.getQueryData<VideoRemixTask>(
         detailQueryKey(queryTaskId),
       )
-
       return mergeTaskDetailPreservingGeneratedState(previousTask, nextTask)
     },
     enabled: Boolean(taskId),
@@ -646,11 +646,23 @@ export function VideoRemixTaskDetailPage() {
     }
     try {
       if (field === 'productInfo') {
+        console.log('productInfo',form.getFieldsValue(true))
+        const fullValues = form.getFieldsValue(true) as VideoRemixTaskFormValues
+        await saveVideoRemixTaskForm(
+          taskId,
+          mapFormValuesToSavePayload(fullValues),
+        )
         setTaskProductInfoLoading(true)
         const data = await generateVideoRemixTaskProductInfo(taskId)
         form.setFieldValue('productInfo', data ?? '')
       }
       if (field === 'voiceoverScript') {
+        console.log('voiceoverScript',form.getFieldsValue(true))
+          const fullValues = form.getFieldsValue(true) as VideoRemixTaskFormValues
+        await saveVideoRemixTaskForm(
+          taskId,
+          mapFormValuesToSavePayload(fullValues),
+        )
         setTaskVoiceoverScriptLoading(true)
         const data = await generateVideoRemixTaskVoiceoverScript(taskId)
         form.setFieldValue('voiceoverScript', data ?? '')
@@ -1023,14 +1035,23 @@ export function VideoRemixTaskDetailPage() {
                     </Form.Item>
                   </div>
 
-                  <Form.Item name="productImageUrlsText" hidden>
+                  <Form.Item name="productImageUrlsText" hidden 
+                    rules={[{ required: true, message: '请先上传商品图' }]}>
                     <Input.TextArea />
                   </Form.Item>
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="text-[14px] font-medium flex justify-between items-center text-[var(--text-primary)]">
-                          商品图
+                          <span className="inline-flex items-center gap-1">
+                          <span
+                              data-testid="video-remix-reference-video-required-mark"
+                              className="text-[#EF4444]"
+                            >
+                              *
+                            </span>
+                            <span>商品图</span>
+                            </span>
                           <UploadTrigger
                             testId="video-remix-product-image-upload-input"
                             accept="image/png,image/jpeg,image/webp"
@@ -1072,6 +1093,21 @@ export function VideoRemixTaskDetailPage() {
                         )
                       }
                     />
+                    <Form.Item noStyle shouldUpdate>
+                      {() => {
+                        const productImageError =
+                          form.getFieldError('productImageUrlsText')[0]
+
+                        return productImageError ? (
+                          <div
+                            data-testid="video-remix-product-image-error"
+                            className="text-[12px] leading-5 text-[#EF4444]"
+                          >
+                            {productImageError}
+                          </div>
+                        ) : null
+                      }}
+                    </Form.Item>
                   </div>
 
                   <Form.Item name="characterImageUrlsText" hidden>
@@ -1236,6 +1272,7 @@ export function VideoRemixTaskDetailPage() {
                                 className="shrink-0"
                                 type="dashed"
                                 icon={<Sparkles size={14} />}
+                                loading={taskVoiceoverScriptLoading}
                                 onClick={() =>
                                   handleAiGenerate('voiceoverScript')
                                 }

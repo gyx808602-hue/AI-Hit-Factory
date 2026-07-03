@@ -55,6 +55,12 @@ const DigitalHumansPage = lazy(() =>
   })),
 )
 
+const CustomisedAudiosPage = lazy(() =>
+  import('../../pages/CustomisedAudiosPage').then((module) => ({
+    default: module.CustomisedAudiosPage,
+  })),
+)
+
 const DigitalHumanDetailPage = lazy(() =>
   import('../../pages/DigitalHumanDetailPage').then((module) => ({
     default: module.DigitalHumanDetailPage,
@@ -194,6 +200,17 @@ export const routeRegistry: AppRoute[] = [
       hideInMenu: true,
       requiresAuth: true,
       activeMenuKey: 'content.imageVideoTasks',
+    },
+  },
+  {
+    key: 'content.customisedAudios',
+    path: '/customised-audios',
+    component: CustomisedAudiosPage,
+    meta: {
+      title: '音色管理',
+      icon: 'Mic2',
+      cache: true,
+      requiresAuth: true,
     },
   },
   {

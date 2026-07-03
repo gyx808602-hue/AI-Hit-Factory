@@ -17,6 +17,7 @@ const backendComponentRouteKeyMap: Record<string, RouteKey> = {
   "content/image-video/tasks/index": "content.imageVideoTasks",
   "content/viral-remix/index": "content.viralRemix",
   "content/viral-remix/tasks/index": "content.viralRemixTasks",
+  "content/customised-audios/index": "content.customisedAudios",
   "content/digital-humans/index": "content.digitalHumans",
   "content/digital-human-videos/index": "content.digitalHumanVideoTasks",
 };

@@ -235,4 +235,16 @@ describe('VideoRemixTasksPage', () => {
     expect(screen.queryByText('操作失败')).not.toBeInTheDocument()
     expect(screen.queryByText('删除失败')).not.toBeInTheDocument()
   })
+
+  it('keeps the task table inside its own scrollable container', async () => {
+    renderTaskListPage()
+
+    await screen.findByText('Queued Task')
+
+    const scrollRegion = screen.getByTestId('video-remix-tasks-table-scroll-region')
+
+    expect(scrollRegion.className).toContain('min-h-0')
+    expect(scrollRegion.className).toContain('overflow-y-auto')
+    expect(scrollRegion.getAttribute('style')).toContain('max-height:')
+  })
 })

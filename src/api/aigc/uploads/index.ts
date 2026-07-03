@@ -30,7 +30,7 @@ export function uploadAudio(
   client?: DataRequestClient,
   config?: RequestConfig,
 ) {
-  return uploadFile("/user-api/aigc/uploads/audio", file, filename, client, config);
+  return uploadFile("/uploads/audio", file, filename, client, config);
 }
 
 /**
@@ -48,7 +48,7 @@ export function uploadImage(
   client?: DataRequestClient,
   config?: RequestConfig,
 ) {
-  return uploadFile("/user-api/aigc/uploads/image", file, filename, client, config);
+  return uploadFile("/uploads/image", file, filename, client, config);
 }
 
 /**
@@ -66,5 +66,5 @@ export function uploadVideo(
   client?: DataRequestClient,
   config?: RequestConfig,
 ) {
-  return uploadFile("/user-api/aigc/uploads/video", file, filename, client, config);
+  return uploadFile("/uploads/video", file, filename, client, config);
 }

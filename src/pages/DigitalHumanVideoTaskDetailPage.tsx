@@ -27,7 +27,7 @@ function PreviewImageCard({
         data-testid={testId}
         src={imageUrl}
         alt="图片预览"
-        className="h-28 w-full object-cover"
+        className="h-30 w-full object-cover"
       />
     </a>
   );
@@ -91,7 +91,7 @@ export function DigitalHumanVideoTaskDetailPage() {
           <Empty description="未找到数字人视频详情" />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] overflow-auto">
           <section className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-5">
             <div className="mb-4">
               <StatusPill

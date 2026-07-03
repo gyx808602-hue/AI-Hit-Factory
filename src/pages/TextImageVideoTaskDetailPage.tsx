@@ -34,7 +34,7 @@ function PreviewImageCard({
     </a>
   )
 }
-
+const FIVE_MINUTES = 1000 * 60 * 1 // 自定义一个常量，表示5分钟的毫秒数，用于设置查询的staleTime和refetchInterval。
 export function TextImageVideoTaskDetailPage() {
   const navigate = useNavigate()
   const { taskId } = useParams()
@@ -43,6 +43,7 @@ export function TextImageVideoTaskDetailPage() {
     queryKey: ['text-image-video', 'task-detail', taskId],
     enabled: Boolean(taskId),
     queryFn: () => getTextImageVideoTaskDetail(taskId!, { silentError: true }),
+    staleTime: FIVE_MINUTES,
     refetchInterval: (query) => {
       const task = query.state.data
 
