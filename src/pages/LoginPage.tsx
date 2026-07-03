@@ -27,7 +27,8 @@ const INITIAL_PASSWORD_CHANGE_CODE = "C10001";
 type LoginFormValues = {
   username: string;
   password: string;
-  captchaKey: string;
+  captchaKey?: string;
+  captchaId?: string;
   captchaCode: string;
   rememberMe: boolean;
 };
@@ -43,7 +44,7 @@ type PasswordResetContext = {
 type InitialPasswordChangeErrorLike = {
   code: string;
   data: AuthenticationToken;
-  message?: string;
+  message?: string; 
   msg?: string;
 };
 
@@ -67,13 +68,28 @@ function setRememberState(rememberMe: boolean, username: string) {
 }
 
 function getCaptchaKey(captcha: CaptchaInfo) {
-  return captcha.captchaKey || captcha.captchaId || "";
+  return captcha.id || captcha.captchaId || captcha.captchaKey || "";
+}
+
+function getCaptchaImageSrc(captcha: CaptchaInfo) {
+  const rawImage = (captcha.base64PNG || captcha.captchaBase64 || "").trim();
+
+  if (!rawImage) {
+    return "";
+  }
+
+  if (rawImage.startsWith("data:")) {
+    return rawImage;
+  }
+
+  // 后端当前返回的是纯 PNG Base64，这里统一补成浏览器可识别的 Data URL。
+  return `data:image/png;base64,${rawImage}`;
 }
 
 function buildFallbackCaptcha(): CaptchaInfo {
   return {
-    captchaKey: "local-fallback",
-    captchaBase64:
+    id: "local-fallback",
+    base64PNG:
       "data:image/svg+xml;utf8," +
       encodeURIComponent(
         `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="44" viewBox="0 0 128 44">
@@ -146,6 +162,7 @@ export function LoginPage() {
     setCaptchaLoading(true);
     try {
       const nextCaptcha = await getCaptcha();
+      console.log("nextCaptcha", nextCaptcha);
       setCaptcha(nextCaptcha);
       loginForm.setFieldValue("captchaKey", getCaptchaKey(nextCaptcha));
     } catch {
@@ -163,7 +180,7 @@ export function LoginPage() {
       const tokens = await login({
         phone: values.username,
         password: values.password,
-        captchaKey: getCaptchaKey(captcha),
+        captchaId: getCaptchaKey(captcha),
         captchaCode: values.captchaCode,
       } satisfies LoginRequest);
 
@@ -403,7 +420,6 @@ export function LoginPage() {
                   <Form.Item name="captchaKey" hidden>
                     <Input />
                   </Form.Item>
-
                   <Form.Item
                     name="captchaCode"
                     rules={[{ required: true, message: "请输入验证码" }]}
@@ -415,6 +431,7 @@ export function LoginPage() {
                         className="min-w-0 flex-1"
                         autoComplete="off"
                       />
+                    
                       <button
                         type="button"
                         className="flex h-10 w-[116px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--line-subtle)] bg-[var(--muted-bg)] transition hover:border-[#7C5CFC]"
@@ -428,7 +445,7 @@ export function LoginPage() {
                           />
                         ) : (
                           <img
-                            src={captcha.captchaBase64}
+                            src={getCaptchaImageSrc(captcha)}
                             alt="验证码"
                             className="h-full w-full object-contain"
                           />

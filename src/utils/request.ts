@@ -13,6 +13,7 @@ import type { ApiResult } from "../api/shared/types";
 export const ApiCode = {
   success: "200",
   successAlt: "00000",
+  successAll: "0",
   accessTokenInvalid: "A0230",
   refreshTokenInvalid: "A0231",
   permissionDenied: "A0301",
@@ -68,7 +69,7 @@ function isBinaryResponse(response: AxiosResponse) {
 }
 
 function isSuccessfulBusinessCode(code: string) {
-  return code === ApiCode.success || code === ApiCode.successAlt;
+  return code === ApiCode.success || code === ApiCode.successAlt || code === ApiCode.successAll;
 }
 
 function isAccessTokenExpiredCode(code: string) {

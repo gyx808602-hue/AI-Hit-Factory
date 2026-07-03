@@ -53,6 +53,10 @@ function renderLoginPage() {
   );
 }
 
+function getCaptchaImage() {
+  return document.querySelector('img[alt="验证码"]') as HTMLImageElement | null;
+}
+
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -118,6 +122,41 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(mockedGetCaptcha).toHaveBeenCalled();
+    });
+  });
+
+  it("renders captcha image from captchaBase64 data url", async () => {
+    renderLoginPage();
+
+    await waitFor(() => {
+      expect(mockedGetCaptcha).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(getCaptchaImage()).not.toBeNull();
+      expect(getCaptchaImage()?.getAttribute("src")).toBe(
+        "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='44'%3E%3C/svg%3E",
+      );
+    });
+  });
+
+  it("adds png data url prefix for raw base64 captcha", async () => {
+    mockedGetCaptcha.mockResolvedValueOnce({
+      id: "captcha-id",
+      base64PNG: "iVBORw0KGgoAAAANSUhEUgAAAHgAAAAoCAIAAAC6iKly",
+    });
+
+    renderLoginPage();
+
+    await waitFor(() => {
+      expect(mockedGetCaptcha).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(getCaptchaImage()).not.toBeNull();
+      expect(getCaptchaImage()?.getAttribute("src")).toBe(
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAAoCAIAAAC6iKly",
+      );
     });
   });
 

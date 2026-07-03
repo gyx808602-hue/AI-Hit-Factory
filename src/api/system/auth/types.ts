@@ -1,7 +1,9 @@
 export interface CaptchaInfo {
   captchaId?: string;
   captchaKey?: string;
-  captchaBase64: string;
+  captchaBase64?: string;
+  base64PNG?: string;
+  id?: string;
 }
 
 export interface LoginRequest {

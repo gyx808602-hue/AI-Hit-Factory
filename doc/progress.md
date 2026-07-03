@@ -1676,3 +1676,226 @@
 ### ��һ��
 1. ���û�ȷ�Ϸ�����ֱ�Ӱ������ĵ�����ʵ�֡�
 2. ʵ��˳���飺���豣����· -> ��ƵԤ������ -> �زĿ�Ƭչʾ -> �б���Ʒ����Ż���
+
+---
+
+## 2026-07-03 OpenSpec 归档与旧任务修订判断
+
+### 已完成
+- 已扫描 `openspec/changes` 下的 7 个活动 change，并按 `tasks.md` 勾选状态初步判断归档候选。
+- 已确认当前环境中 `openspec` CLI 不在 PATH，无法执行 `openspec list --json` 与 `openspec status --change ... --json`，本次判断以文件状态和当前代码实现为依据。
+- 已对照当前 Vite + React + TypeScript 代码结构，核对路由、动态菜单、追爆任务、文图生视频、数字人管理相关页面、API、feature 层与测试文件。
+
+### 可归档候选
+- `add-figma-ui-shell-pages`：`tasks.md` 全部完成，代码中已存在基础应用壳、动态路由相关测试和页面结构，可作为优先归档候选。
+- `add-text-image-video-task-flow`：`tasks.md` 全部完成，代码中已存在文图生视频 API、feature、列表页、详情页和测试，可作为优先归档候选。
+- `connect-dynamic-menu-routes`：`tasks.md` 仍有大量未勾选，但当前代码已实现 `buildDynamicRouteState`、`useCurrentUserRoutes`、App 初始化接入、403/404、登录 redirect、动态路由测试等核心能力；建议先修正任务勾选与描述，再考虑归档。
+
+### 不建议直接归档
+- `add-account-system-react-pages`：29 个任务未完成，且当前代码主要是业务生产平台页面，不是账号体系完整页面，建议保留或重新评估范围。
+- `add-digital-human-management-flow`：剩余 `npm test` 与手工主链路验证未勾选，代码实现基本存在，但应补验证记录后再归档。
+- `add-video-remix-task-flow`：大部分完成，仅剩“是否需要局部组件/hooks”和手工主链路验证；其中 3.3 更像条件性任务，建议改成“无需新增 shared 抽象，保留页面局部实现”并勾选，手工验证后可归档。
+- `redesign-video-remix-step-flow`：当前代码已出现 `Steps/currentStep/generatedPrompt/progress` 等三步流证据，说明实现进度高于任务勾选；但任务文件仍有 21 项未勾选，建议先系统更新任务状态，不建议现在归档。
+
+### 需要修改的旧任务
+- `connect-dynamic-menu-routes`：任务状态明显落后于代码，应把已实现的动态路由转换器、外链识别、隐藏菜单、App 接入、登录 redirect、403/404 和相关测试改为已完成；剩余只保留确实未验证或未完成的项。
+- `redesign-video-remix-step-flow`：任务状态明显落后于代码，应重新核对 `VideoRemixTaskDetailPage.tsx`、`features/video-remix/*` 和对应测试，把三步导航、提示词编辑、进度反馈、视频对比等已实现项勾选；若仍有 UI 细节差异，再拆成更小的补充任务。
+- `add-video-remix-task-flow`：3.3 是条件性任务，不应长期卡归档；若当前页面局部实现已经足够，应改写为“经评估无需新增 shared 抽象”，并勾选。
+- 所有 change 的归档前都建议先补主规格目录或确认是否不需要 sync；当前仓库没有 `openspec/specs` 主规格目录，归档时要明确“仅归档变更，不同步主规格”还是先补齐主规格。
+
+### 下一步
+1. 先修正 `connect-dynamic-menu-routes` 与 `redesign-video-remix-step-flow` 的 `tasks.md` 勾选状态。
+2. 对 `add-figma-ui-shell-pages` 与 `add-text-image-video-task-flow` 做归档前确认。
+3. 如需真实归档，先让用户确认具体 change 名称；归档会移动目录到 `openspec/changes/archive/YYYY-MM-DD-<change-name>`，本次没有执行移动或删除。
+---
+
+## 2026-07-03 OpenSpec 当前未完成任务清单
+
+当前 OpenSpec 未完成任务清单
+
+- add-account-system-react-pages: 已完成 0，未完成 29
+  - [ ] 1.1 Confirm React scaffold choice: Vite + React + TypeScript is the default unless the team requests Next.js or another framework.
+  - [ ] 1.2 Initialize the frontend project structure and keep source code under a clear app directory.
+  - [ ] 1.3 Add routing, linting, formatting, and TypeScript configuration.
+  - [ ] 1.4 Define environment configuration for Mock API and future backend API base URL.
+  - [ ] 2.1 Use Figma MCP to scan the provided account-system page nodes.
+  - [ ] 2.2 Map Figma frames to the PRD page list: login/register, phone binding, profile, real-name auth, enterprise certification, enterprise workspace, members, points usage, agreement signing, permission modal.
+  - [ ] 2.3 Identify missing Figma pages and create implementation placeholders using the same design system style.
+  - [ ] 2.4 Extract reusable UI patterns: form layout, verification-code input, upload field, status badge, table, modal, empty state, and workspace summary card.
+  - [ ] 3.1 Create TypeScript types for user, account status, real-name auth, enterprise, enterprise member, points account, agreement, permission result, and operation log context.
+  - [ ] 3.2 Implement a centralized API Client interface for auth, account profile, real-name auth, enterprise application, enterprise members, points usage, and agreement signing.
+  - [ ] 3.3 Add Mock API data that covers personal user, real-name user, enterprise admin, creator, observer, unbound WeChat user, frozen user, and rejected certification states.
+  - [ ] 3.4 Add a small permission utility that evaluates identity, role, certification, account status, points status, and agreement status.
+  - [ ] 4.1 Implement phone/password login, phone/SMS login, registration, and password reset pages.
+  - [ ] 4.2 Implement WeChat phone-binding page for PC scan and mini-program authorization result states.
+  - [ ] 4.3 Implement personal center page with phone, WeChat binding, identity type, account status, certification status, enterprise status, and agreement records.
+  - [ ] 4.4 Implement real-name authentication page with submission, pending, approved, rejected, and frozen states.
+  - [ ] 5.1 Implement enterprise certification application page with required fields, upload placeholders, contact phone verification, and agreement confirmation.
+  - [ ] 5.2 Implement enterprise workspace home with enterprise information, points balance, member count, recent tasks, material entry, digital-human entry, and usage entry.
+  - [ ] 5.3 Implement member management page with create member, role assignment, stop member, and role-limited access states.
+  - [ ] 5.4 Implement points usage page with balance summary, member usage records, task/function type, cost, result status, refund status, and time filters.
+  - [ ] 6.1 Implement agreement signing modal/page for registration, first AI generation, enterprise certification, high-risk鐪熶汉绱犳潗, and digital-human scenes.
+  - [ ] 6.2 Implement permission interception modal for鏈疄鍚嶃€佹湭绛剧讲銆佷紒涓氭湭璁よ瘉銆佽鑹叉棤鏉冮檺銆佽处鍙峰喕缁撱€侀鎺ч檺鍒?and points unavailable states.
+  - [ ] 6.3 Ensure high-risk features display the required guidance copy from the PRD.
+  - [ ] 6.4 Ensure sensitive information such as ID card number is masked in all user-facing displays.
+  - [ ] 7.1 Run TypeScript checks and linting.
+  - [ ] 7.2 Run unit tests for permission utility and API Client mock state transitions.
+  - [ ] 7.3 Use browser verification to test login, WeChat binding, real-name submission, enterprise certification, member management, points usage, agreement signing, and permission interception flows.
+  - [ ] 7.4 Compare implemented pages against Figma MCP screenshots and fix layout mismatches.
+  - [ ] 7.5 Run `openspec status --change add-account-system-react-pages` and confirm the change is apply-ready.
+
+- add-digital-human-management-flow: 已完成 28，未完成 2
+  - [ ] 7.3 杩愯 `npm test`
+  - [ ] 7.5 鎵嬪伐楠岃瘉鈥滃垪琛ㄦ煡璇?-> 鍒涘缓鏁板瓧浜?-> 鏌ョ湅璇︽儏 -> 鍒锋柊鐘舵€?-> 鍒犻櫎鏁板瓧浜衡€濅富閾捐矾
+
+- add-figma-ui-shell-pages: 已完成 41，未完成 0
+
+- add-text-image-video-task-flow: 已完成 24，未完成 0
+
+- add-video-remix-task-flow: 已完成 27，未完成 2
+  - [ ] 3.3 濡傞〉闈㈢粍鍚堝鏉傚害杩囬珮锛屾柊澧炴渶灏忓繀瑕佺殑灞€閮ㄧ粍浠舵垨 hooks锛屼絾閬垮厤鎶婁竴娆℃€ч〉闈㈠潡杩囨棭鎻愬崌鍒?`shared`
+  - [ ] 7.5 鎵嬪姩楠岃瘉鈥滃垱寤?-> 璇︽儏 -> 淇濆瓨 -> 鐢熸垚 -> 鍒锋柊 -> 鍥炵湅鈥濅富閾捐矾
+
+- connect-dynamic-menu-routes: 已完成 6，未完成 0
+
+- redesign-video-remix-step-flow: 已完成 4，未完成 21
+  - [ ] 2.1 璋冩暣 `src/features/video-remix/form.ts`锛屼负鈥滅礌鏉愪笂浼犲拰閰嶇疆鈥濃€滄彁绀鸿瘝鈥濃€滆棰戠敓鎴愨€濅笁姝ラ噸鏂版⒊鐞嗗瓧娈垫槧灏勮竟鐣?
+  - [ ] 2.2 淇濈暀鍐呴儴鍥剧墖 URL 鏂囨湰鏄犲皠鍏煎閫昏緫锛屼絾绉婚櫎 UI 瀵瑰晢鍝佸浘銆佷汉鐗╁浘 URL 鐩存帴杈撳叆鐨勪緷璧?
+  - [ ] 2.3 鎵╁睍 `src/features/video-remix/status.ts`锛岃ˉ鍏呮彁绀鸿瘝鐢熸垚闃舵銆佽棰戠敓鎴愰樁娈电殑鎸夐挳鍙敤鎬с€佽繘搴﹀睍绀哄拰澶辫触鍙嶉鍒ゆ柇
+  - [ ] 3.1 閲嶆瀯 `src/pages/VideoRemixTaskDetailPage.tsx`锛屽姞鍏ヤ笁姝ユ祦绋嬪鑸苟浠ラ〉闈㈠眬閮ㄧ姸鎬佹帶鍒跺綋鍓嶆楠?
+  - [ ] 3.2 灏嗏€滅礌鏉愪笂浼犲拰閰嶇疆鈥濇敼涓虹涓€涓楠わ紝璋冩暣瀛楁椤哄簭涓衡€滅礌鏉愪笂浼犲湪鍓嶏紝鍐呭鏂瑰悜鍦ㄥ悗鈥?
+  - [ ] 3.3 鍦ㄧ礌鏉愭楠や腑涓衡€滃鍒绘柟鍚戔€濆鍔犲娉ㄨ鏄庯紝骞朵负鈥滀骇鍝佷俊鎭€濃€滃彛鎾枃妗堚€濆鍔犫€淎I 鑷姩鐢熸垚鈥濇寜閽叆鍙?
+  - [ ] 3.4 鍒犻櫎绱犳潗姝ラ涓殑鈥滆棰戞憳瑕佲€濊緭鍏ュ尯锛屽苟灏嗗晢鍝佸浘銆佷汉鐗╁浘浜や簰鏀逛负鈥滀笂浼?+ 棰勮 + 鍒犻櫎鈥?
+  - [ ] 3.5 缂╁皬鍙傝€冭棰戦瑙堝竷灞€锛屽崰鐢ㄦ洿灏戦〉闈㈢┖闂翠絾淇濈暀棰勮鑳藉姏
+  - [ ] 3.6 灏嗘彁绀鸿瘝鍖哄煙鏀归€犳垚鐙珛姝ラ锛屽睍绀哄綋鍓嶆彁绀鸿瘝銆佹敮鎸佹墜鍔ㄧ紪杈戙€佹敮鎸佽Е鍙戠敓鎴愭彁绀鸿瘝
+  - [ ] 3.7 灏嗚棰戠敓鎴愬尯鍩熸敼閫犳垚鐙珛姝ラ锛屽姞鍏ュ弬鑰冭棰戜笌鐢熸垚瑙嗛鐨勫姣斿睍绀?
+  - [ ] 3.8 鍦ㄦ彁绀鸿瘝鐢熸垚銆佽棰戠敓鎴愭楠や腑鍔犲叆姝ラ鍖哄唴鐨?loading銆佽繘搴︽潯銆佺姸鎬佹枃妗堝拰澶辫触鍘熷洜灞曠ず
+  - [ ] 4.1 淇濇寔 `src/pages/VideoRemixTasksPage.tsx` 鐨勨€滃垱寤轰换鍔″悗杩涘叆璇︽儏椤碘€濋摼璺笉鍙橈紝蹇呰鏃惰皟鏁存彁绀烘枃妗堜互鍖归厤鏂版楠ゆ祦
+  - [ ] 4.2 鏍稿 `src/pages/ViralRemixPage.tsx` 鏄惁浠嶉渶淇濈暀涓烘棫鍏ュ彛椤垫垨寮曞椤碉紝閬垮厤涓庡綋鍓嶄富閾捐矾浜х敓鍐茬獊
+  - [ ] 4.3 纭 `src/app/router/routeRegistry.tsx`銆乣routeTypes.ts`銆佺浉鍏宠彍鍗曢珮浜€昏緫鏃犻渶鏂板瀛愯矾鐢憋紝浠呬繚鎸佺幇鏈変换鍔″垪琛ㄤ笌璇︽儏璺敱鍙敤
+  - [ ] 5.1 鏇存柊 `src/pages/VideoRemixTaskDetailPage.test.tsx`锛岃鐩栨楠ゅ鑸€佸瓧娈甸『搴忋€佸垹闄よ棰戞憳瑕併€侀殣钘?URL 杈撳叆銆佹彁绀鸿瘝鍙紪杈戙€佽繘搴﹀弽棣堝拰瑙嗛瀵规瘮
+  - [ ] 5.2 鏍规嵁瀹為檯鏀瑰姩鏇存柊 `src/pages/ViralRemixPage.test.tsx`銆乣src/pages/VideoRemixTasksPage.test.tsx` 鎴栫浉鍏宠矾鐢辨祴璇?
+  - [ ] 5.3 鎵ц杩界垎浠诲姟鐩稿叧娴嬭瘯鍛戒护锛岀‘璁ら〉闈富娴佺▼鍥炲綊閫氳繃
+  - [ ] 5.4 鎵ц绫诲瀷妫€鏌ユ垨鏋勫缓鍛戒护锛岀‘璁ゆ湰娆℃敼閫犳湭鐮村潖鐜版湁宸ョ▼
+  - [ ] 6.1 瀹屾垚姣忎竴灏忛樁娈靛悗鏇存柊 `doc/progress.md`
+  - [ ] 6.2 鍚屾鏇存柊 `doc/2026-06-27-video-remix-stepflow-progress.md`锛岃褰曟湰娆?OpenSpec 寤虹珛銆佹柟妗堝喅绛栧拰鍚庣画鎵ц鐘舵€?
+  - [ ] 6.3 鍦ㄥ疄鐜板畬鎴愬悗锛岃ˉ鍏呮渶缁堥獙璇佺粨鏋滀笌鍓╀綑椋庨櫓璇存槑
+
+---
+
+## 2026-07-03 OpenSpec 未完成任务清单输出
+
+### 已完成
+- 已按当前 `openspec/changes/*/tasks.md` 再次整理未完成任务，并向用户输出。
+- 已确认 `connect-dynamic-menu-routes/tasks.md` 存在编码串行问题，统计时需人工纠正，不能只看自动勾选汇总。
+
+### 当前判断
+- 当前未完成任务主要集中在 `add-account-system-react-pages`、`connect-dynamic-menu-routes`、`redesign-video-remix-step-flow`。
+- `add-figma-ui-shell-pages` 与 `add-text-image-video-task-flow` 已无未完成项。
+---
+
+## 2026-07-03 OpenSpec 批量归档前检查
+
+### 已完成
+- 已完成 `openspec/changes` 批量归档前检查，本轮未执行任何移动操作。
+- 已确认当前不存在 `openspec/changes/archive` 目录。
+- 已确认以下 7 个 change 按 `2026-07-03-<change-name>` 命名归档时均不会重名。
+
+### 当前判断
+- 可以执行批量归档流程，但这会移动 change 目录到 archive 下。
+- 当前环境缺少 `openspec` CLI，无法走标准 `openspec status` 归档检查，只能基于现有文件状态执行归档。
+- 当前仓库也没有 `openspec/specs` 主规格目录，因此本次归档只能做“目录归档”，不会做主规格同步。
+---
+
+## 2026-07-03 OpenSpec 批量归档完成
+
+### 已完成
+- 已创建 `openspec/changes/archive/`。
+- 已将以下 7 个活动 change 批量移动到归档目录：
+  - `2026-07-03-add-account-system-react-pages`
+  - `2026-07-03-add-digital-human-management-flow`
+  - `2026-07-03-add-figma-ui-shell-pages`
+  - `2026-07-03-add-text-image-video-task-flow`
+  - `2026-07-03-add-video-remix-task-flow`
+  - `2026-07-03-connect-dynamic-menu-routes`
+  - `2026-07-03-redesign-video-remix-step-flow`
+- 已复核 `openspec/changes`，当前活动区仅剩 `archive` 目录。
+
+### 当前判断
+- 本次归档是目录级归档，未执行主规格同步。
+- 原因是当前环境缺少 `openspec` CLI，且仓库内不存在 `openspec/specs` 主规格目录。
+- 由于部分 change 原本存在未完成任务，本次归档更偏向“历史收口”，适合后续按需要重新提炼新的 change，而不是继续沿用旧 change 状态。
+---
+
+## 2026-07-03 OpenSpec 触发约定整理
+
+### 已完成
+- 已整理“用户如何明确要求先识别再创建 OpenSpec 任务”的推荐话术。
+- 已准备可直接放入 AGENTS.md 的长期约定文本。
+
+### 当前判断
+- 最稳妥的方式是让用户在需求里明确声明“先走 OpenSpec，只建任务不改代码”或在 AGENTS.md 中写成固定规则。
+- 若用户希望默认自动建 OpenSpec，则应明确“哪些情况必须先建 change，哪些情况允许直接改代码”。
+---
+
+## 2026-07-03 AGENTS.md 规则落地
+
+### 已完成
+- 已在仓库根目录新增 `AGENTS.md`。
+- 已整理并落地以下长期协作规则：
+  - 简体中文沟通
+  - 小阶段完成后同步更新进展文档
+  - 删除/高风险磁盘操作前先确认
+  - 默认先调研再实施
+  - 新功能、重构、跨文件改动优先先走 OpenSpec
+  - 收到“开始执行”后再正式改代码
+- 已加入可直接触发 OpenSpec 的用户话术约定。
+
+### 当前判断
+- 后续你只要明确说“先走 OpenSpec”或“先在 openspec 里立任务”，就能稳定触发先建 change、再等确认、最后执行的流程。
+- 当前仓库之前没有实际落地的 `AGENTS.md`，现在已经补齐为仓库级规则入口。
+---
+
+## 2026-07-03 OpenSpec 环境核对
+
+### 已完成
+- 已检查当前环境中的 `openspec` CLI 是否可用。
+- 已检查仓库内是否存在 `openspec/specs` 主规格目录。
+- 已确认仓库仅存在 `openspec/config.yaml`、`openspec/project.md` 与已归档的 `openspec/changes/archive/*`。
+
+### 当前判断
+- 当前环境里 `openspec` CLI 大概率没有安装，或至少没有进入当前 shell 的 PATH。
+- `openspec/specs` 缺失不是 CLI 安装问题，而是仓库层面的主规格目录没有建立或没有同步出来。
+- 也就是说：一个是“工具环境问题”，一个是“项目结构内容问题”，不能混为一类。
+---
+
+## 2026-07-03 OpenSpec CLI 修复与主规格基线建立
+
+### 已完成
+- 已通过 `npm install -g @fission-ai/openspec@latest` 安装 OpenSpec CLI。
+- 已确认当前环境满足 OpenSpec 要求的 Node 版本，且 `openspec --version` 可正常输出 `1.5.0`。
+- 已确认 `openspec list --json` 可以在当前仓库正常执行。
+- 已创建 `openspec/specs/` 主规格目录，并补齐以下 5 个主规格能力：
+  - `figma-ui-shell-pages`
+  - `dynamic-menu-routes`
+  - `text-image-video-task-flow`
+  - `video-remix-task-flow`
+  - `digital-human-management-flow`
+- 已执行 `openspec validate --specs --json --no-interactive`，5 个 spec 全部校验通过。
+
+### 当前判断
+- 当前仓库已经从“只有 changes/ 没有主规格”的状态，补齐为“具备 CLI + 主规格基线”的可持续 OpenSpec 结构。
+- 后续再新增需求时，可以直接先建 change，并在需要归档时把变更同步回 `openspec/specs/`。
+- 之前归档的 change 中仍有部分内容只是历史方案或未完全落地实现，因此这次建立的是“当前核心能力主规格基线”，不是机械复制全部旧 change 状态。
+
+### 下一步
+1. 后续新需求直接按“先走 OpenSpec”创建新 change。
+2. 对尚未沉淀主规格的能力（如数字人视频任务、定制音色等）再按实际代码情况逐步补 specs。
+3. 如需，我可以继续帮你把历史 archive 中值得保留的能力继续补成主规格。
+
+### 验证结果
+- 已执行：`openspec --version`
+- 已执行：`openspec list --json`
+- 已执行：`openspec list --specs`
+- 已执行：`openspec validate --specs --json --no-interactive`
+- 结果：5 个 specs 全部通过校验。
