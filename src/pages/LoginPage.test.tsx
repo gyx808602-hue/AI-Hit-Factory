@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./LoginPage";
@@ -11,6 +11,7 @@ const {
   mockedSetTokenPair,
   mockedClear,
   mockedNavigate,
+  mockedMessageSuccess,
 } = vi.hoisted(() => ({
   mockedGetCaptcha: vi.fn(),
   mockedLogin: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockedSetTokenPair: vi.fn(),
   mockedClear: vi.fn(),
   mockedNavigate: vi.fn(),
+  mockedMessageSuccess: vi.fn(),
 }));
 
 vi.mock("../api/system/auth", () => ({
@@ -35,6 +37,18 @@ vi.mock("../utils/auth", () => ({
   },
   redirectToLogin: vi.fn(),
 }));
+
+vi.mock("antd", async () => {
+  const actual = await vi.importActual<typeof import("antd")>("antd");
+
+  return {
+    ...actual,
+    message: {
+      ...actual.message,
+      success: mockedMessageSuccess,
+    },
+  };
+});
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -55,6 +69,25 @@ function renderLoginPage() {
 
 function getCaptchaImage() {
   return document.querySelector('img[alt="验证码"]') as HTMLImageElement | null;
+}
+
+async function submitLogin(username = "15838237810", password = "Init@123") {
+  await waitFor(() => {
+    expect(mockedGetCaptcha).toHaveBeenCalled();
+  });
+
+  const textboxes = screen.getAllByRole("textbox");
+  fireEvent.change(textboxes[0], { target: { value: username } });
+  fireEvent.change(screen.getByPlaceholderText("请输入验证码"), {
+    target: { value: "1234" },
+  });
+
+  const passwordInputs = document.querySelectorAll('input[type="password"]');
+  fireEvent.change(passwordInputs[0] as HTMLInputElement, {
+    target: { value: password },
+  });
+
+  fireEvent.submit(document.querySelector("form") as HTMLFormElement);
 }
 
 describe("LoginPage", () => {
@@ -83,7 +116,7 @@ describe("LoginPage", () => {
 
     const textboxes = screen.getAllByRole("textbox");
     fireEvent.change(textboxes[0], { target: { value: "merchant01" } });
-    fireEvent.change(screen.getByPlaceholderText("璇疯緭鍏ラ獙璇佺爜"), {
+    fireEvent.change(screen.getByPlaceholderText("请输入验证码"), {
       target: { value: "1234" },
     });
 
@@ -160,7 +193,7 @@ describe("LoginPage", () => {
     });
   });
 
-  it("switches to the change-password form when login returns C10001", async () => {
+  it("opens a forced password change dialog when login returns C10001", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
       msg: "请先修改初始密码",
@@ -174,22 +207,7 @@ describe("LoginPage", () => {
 
     renderLoginPage();
 
-    await waitFor(() => {
-      expect(mockedGetCaptcha).toHaveBeenCalled();
-    });
-
-    const textboxes = screen.getAllByRole("textbox");
-    fireEvent.change(textboxes[0], { target: { value: "15838237810" } });
-    fireEvent.change(screen.getByPlaceholderText("请输入验证码"), {
-      target: { value: "1234" },
-    });
-
-    const passwordInputs = document.querySelectorAll('input[type="password"]');
-    fireEvent.change(passwordInputs[0] as HTMLInputElement, {
-      target: { value: "Init@123" },
-    });
-
-    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
+    await submitLogin();
 
     await waitFor(() => {
       expect(mockedLogin).toHaveBeenCalledWith({
@@ -200,13 +218,12 @@ describe("LoginPage", () => {
       });
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("请先修改初始密码")).toBeInTheDocument();
-    });
-
-    expect(screen.getByPlaceholderText("请输入旧密码")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("请输入新密码")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("请再次输入新密码")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("首次登录重置密码");
+    expect(dialog).toHaveTextContent("请先修改初始密码");
+    expect(within(dialog).getByPlaceholderText("请输入旧密码")).toBeInTheDocument();
+    expect(within(dialog).getByPlaceholderText("请输入新密码")).toBeInTheDocument();
+    expect(within(dialog).getByPlaceholderText("请再次输入新密码")).toBeInTheDocument();
     expect(mockedSetTokenPair).toHaveBeenCalledWith({
       accessToken: "access-token",
       refreshToken: "refresh-token",
@@ -214,6 +231,68 @@ describe("LoginPage", () => {
       expiresIn: 7200,
     });
     expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("stores temporary tokens when C10001 response includes token data", async () => {
+    mockedLogin.mockRejectedValueOnce({
+      code: "C10001",
+      msg: "璇峰厛淇敼鍒濆瀵嗙爜",
+      data: {
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        expiresIn: 7200,
+      },
+    });
+
+    renderLoginPage();
+
+    await submitLogin();
+
+    await screen.findByRole("dialog");
+
+    expect(mockedSetTokenPair).toHaveBeenCalledWith({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      tokenType: "Bearer",
+      expiresIn: 7200,
+    });
+    expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("blocks forced password change submit when confirm password does not match", async () => {
+    mockedLogin.mockRejectedValueOnce({
+      code: "C10001",
+      msg: "请先修改初始密码",
+      data: {
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        expiresIn: 7200,
+      },
+    });
+
+    renderLoginPage();
+
+    await submitLogin();
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByPlaceholderText("请输入旧密码"), {
+      target: { value: "Init@123" },
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText("请输入新密码"), {
+      target: { value: "NewPass@123" },
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText("请再次输入新密码"), {
+      target: { value: "Different@123" },
+    });
+
+    fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(screen.getByText("两次输入的新密码不一致")).toBeInTheDocument();
+    });
+    expect(mockedChangePassword).not.toHaveBeenCalled();
   });
 
   it("returns to the login form after changing the initial password", async () => {
@@ -231,22 +310,7 @@ describe("LoginPage", () => {
 
     renderLoginPage();
 
-    await waitFor(() => {
-      expect(mockedGetCaptcha).toHaveBeenCalled();
-    });
-
-    const loginTextboxes = screen.getAllByRole("textbox");
-    fireEvent.change(loginTextboxes[0], { target: { value: "15838237810" } });
-    fireEvent.change(screen.getByPlaceholderText("请输入验证码"), {
-      target: { value: "1234" },
-    });
-
-    const loginPasswordInputs = document.querySelectorAll('input[type="password"]');
-    fireEvent.change(loginPasswordInputs[0] as HTMLInputElement, {
-      target: { value: "Init@123" },
-    });
-
-    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
+    await submitLogin();
 
     await waitFor(() => {
       expect(mockedLogin).toHaveBeenCalledWith({
@@ -257,22 +321,19 @@ describe("LoginPage", () => {
       });
     });
 
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText("请输入旧密码")).toBeInTheDocument();
-    });
+    const dialog = await screen.findByRole("dialog");
 
-    const changePasswordInputs = document.querySelectorAll('input[type="password"]');
-    fireEvent.change(changePasswordInputs[0] as HTMLInputElement, {
+    fireEvent.change(within(dialog).getByPlaceholderText("请输入旧密码"), {
       target: { value: "Init@123" },
     });
-    fireEvent.change(changePasswordInputs[1] as HTMLInputElement, {
+    fireEvent.change(within(dialog).getByPlaceholderText("请输入新密码"), {
       target: { value: "NewPass@123" },
     });
-    fireEvent.change(changePasswordInputs[2] as HTMLInputElement, {
+    fireEvent.change(within(dialog).getByPlaceholderText("请再次输入新密码"), {
       target: { value: "NewPass@123" },
     });
 
-    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
+    fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
 
     await waitFor(() => {
       expect(mockedChangePassword).toHaveBeenCalledWith({
@@ -283,9 +344,13 @@ describe("LoginPage", () => {
     });
 
     expect(mockedClear).toHaveBeenCalled();
+    expect(mockedMessageSuccess).toHaveBeenCalledWith("密码修改成功，请重新登录");
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /登录/ })).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 });

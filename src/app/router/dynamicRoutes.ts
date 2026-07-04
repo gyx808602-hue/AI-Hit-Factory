@@ -20,6 +20,7 @@ const backendComponentRouteKeyMap: Record<string, RouteKey> = {
   "content/customised-audios/index": "content.customisedAudios",
   "content/digital-humans/index": "content.digitalHumans",
   "content/digital-human-videos/index": "content.digitalHumanVideoTasks",
+  "points/usage-statistics/index": "points.usageStatistics",
 };
 
 function normalizePath(path: string | undefined) {

@@ -23,7 +23,7 @@ export function login(data: LoginRequest): Promise<AuthenticationToken> {
 
 // 客户首次登录或主动改密时，必须验证旧密码并确认新密码。
 export function changePassword(data: ChangePasswordRequest): Promise<void> {
-  return request.post<void>("/auth/change-password", data);
+  return request.post<void>("/auth/password", data);
 }
 
 // 短信验证码登录用于后续手机号快捷登录流程。

@@ -141,6 +141,7 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       const message = response.data?.msg || "系统出错";
       if (shouldNotifyError(response.config)) {
         notifyError(message);
+        
       }
       return Promise.reject(
         new RequestBusinessError(code, message, response.data?.data),

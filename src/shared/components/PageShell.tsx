@@ -12,7 +12,7 @@ export function PageShell({ title, description, actions, children }: PageShellPr
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-0 h-full w-full max-w-[1440px] flex-1 flex-col">
+      <div className="mx-auto flex min-h-0 h-full w-full  flex-1 flex-col">
         {hasHeader ? (
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">

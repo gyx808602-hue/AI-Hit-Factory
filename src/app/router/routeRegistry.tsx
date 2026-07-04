@@ -85,6 +85,12 @@ const TaskRecordsPage = lazy(() =>
   })),
 )
 
+const PointsUsageStatisticsPage = lazy(() =>
+  import('../../pages/PointsUsageStatisticsPage').then((module) => ({
+    default: module.PointsUsageStatisticsPage,
+  })),
+)
+
 const AssetLibraryPage = lazy(() =>
   import('../../pages/AssetLibraryPage').then((module) => ({
     default: module.AssetLibraryPage,
@@ -259,6 +265,18 @@ export const routeRegistry: AppRoute[] = [
       hideInMenu: true,
       requiresAuth: true,
       activeMenuKey: 'content.digitalHumanVideoTasks',
+    },
+  },
+  {
+    key: 'points.usageStatistics',
+    path: '/points/usage-statistics',
+    component: PointsUsageStatisticsPage,
+    meta: {
+      title: '积分统计',
+      icon: 'CircleDollarSign',
+      cache: true,
+      requiresAuth: true,
+      permissionCode: 'points:usage:view',
     },
   },
   // {

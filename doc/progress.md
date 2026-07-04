@@ -1899,3 +1899,317 @@
 - 已执行：`openspec list --specs`
 - 已执行：`openspec validate --specs --json --no-interactive`
 - 结果：5 个 specs 全部通过校验。
+---
+
+## 2026-07-03 登录强制修改密码 OpenSpec 任务创建
+
+### 已完成
+
+- 已按需求创建 OpenSpec change：`force-password-change-dialog-on-login`。
+- 已完成代码库上下文扫描，确认项目为 Vite + React + TypeScript + Ant Design + axios 请求封装。
+- 已确认当前登录相关文件：
+  - `src/pages/LoginPage.tsx`
+  - `src/pages/LoginPage.test.tsx`
+  - `src/api/system/auth/index.ts`
+  - `src/api/system/auth/types.ts`
+  - `src/utils/request.ts`
+- 已创建以下 OpenSpec 文档：
+  - `openspec/changes/force-password-change-dialog-on-login/proposal.md`
+  - `openspec/changes/force-password-change-dialog-on-login/design.md`
+  - `openspec/changes/force-password-change-dialog-on-login/specs/force-password-change-login/spec.md`
+  - `openspec/changes/force-password-change-dialog-on-login/tasks.md`
+
+### 当前判断
+
+- 本次需求属于登录安全链路增量，应先走 OpenSpec，不直接改业务代码。
+- 现有代码已经存在 `C10001` 首次登录改密雏形，但与新需求仍有差异：
+  - 当前更像登录区块切换为改密表单，新需求要求弹窗。
+  - 当前 API 路径是 `/auth/change-password`，新需求要求 `/auth/password`。
+  - 新需求明确要求改密请求带 token。
+  - 改密成功后需要提示用户重新登录。
+
+### 下一步
+
+1. 等用户确认后执行 `openspec/changes/force-password-change-dialog-on-login/tasks.md`。
+2. 实施时优先修改 API 层路径，再改登录页弹窗状态，最后补定向测试。
+3. 验证重点是 `C10001` 分支、`/auth/password` 请求体、Authorization 头、成功后清理登录态和重新登录提示。
+
+### 验证结果
+
+- 已成功创建 OpenSpec change。
+- 尚未修改业务代码。
+- 尚未运行实现相关测试，等待用户确认“开始执行”后再进入开发验证。---
+
+## 2026-07-03 个人中心页面 OpenSpec 任务创建
+
+### 已完成
+
+- 已根据用户提供的个人中心参考图创建 OpenSpec change：`add-personal-center-page`。
+- 已完成当前代码库上下文扫描，确认项目为 Vite + React + TypeScript + Ant Design/TailwindCSS，路由采用 `RouteKey` + `routeRegistry` 静态组件映射模式。
+- 已创建以下 OpenSpec 文档：
+  - `openspec/changes/add-personal-center-page/proposal.md`
+  - `openspec/changes/add-personal-center-page/design.md`
+  - `openspec/changes/add-personal-center-page/specs/personal-center-page/spec.md`
+  - `openspec/changes/add-personal-center-page/tasks.md`
+- 已将个人中心页面任务范围拆为：个人资料概览、积分概览、使用统计、安全与偏好、接口字段预留、动态路由接入、页面状态与响应式验收。
+
+### 当前判断
+
+- 本次需求属于新增页面能力，已按项目规则先走 OpenSpec，尚未修改业务代码。
+- 后端接口和字段当前未确定，因此设计上先预留 `PersonalCenterOverview` 前端视图模型、API Client、React Query hooks 和 Mock/adapter 层，避免页面直接依赖未确认字段。
+- 页面 routeKey 暂定为 `account.personalCenter`，后续实现时通过现有静态路由注册表接入，后端动态菜单只下发 routeKey 与权限码。
+
+### 下一步
+
+1. 等待用户确认“开始执行”后，再按 `openspec/changes/add-personal-center-page/tasks.md` 实施代码。
+2. 实施时优先完成账号域类型、API Client、React Query hook 和 Mock 数据，再接路由和页面 UI。
+3. 真实后端接口确认后，只在 API adapter 层映射字段，页面继续消费稳定的 `PersonalCenterOverview`。
+
+### 验证结果
+
+- 已执行：`cmd /c openspec status --change add-personal-center-page`
+- 已执行：`cmd /c openspec validate add-personal-center-page --strict`
+- 结果：OpenSpec 校验通过，4/4 artifacts complete。
+- 尚未运行前端测试；本阶段只创建 OpenSpec 任务，未进入业务代码实现。
+
+---
+
+## 2026-07-03 积分统计页面 OpenSpec 任务创建
+
+### 已完成
+
+- 已按需求创建 OpenSpec change：`add-points-usage-statistics-page`。
+- 已完成项目上下文扫描，确认当前技术栈为 Vite + React + TypeScript + Ant Design + TailwindCSS，且已有应用壳、路由注册表和深色工作台风格。
+- 已根据用户提供的参考图，明确积分统计页采用“顶部概览卡片 + 使用统计卡片 + 下方积分使用记录表格”的页面结构。
+- 已创建以下 OpenSpec 文档：
+  - `openspec/changes/add-points-usage-statistics-page/proposal.md`
+  - `openspec/changes/add-points-usage-statistics-page/design.md`
+  - `openspec/changes/add-points-usage-statistics-page/specs/points-usage-statistics-page/spec.md`
+  - `openspec/changes/add-points-usage-statistics-page/tasks.md`
+
+### 当前判断
+
+- 本需求属于积分体系的新页面能力，应先走 OpenSpec，不直接修改业务代码。
+- 当前接口字段未定，后续实现必须先定义 TypeScript 类型、API Client、React Query hooks 和 Mock 数据，不能把临时字段散落在页面 JSX 中。
+- 积分使用记录属于审计型长列表，应从一开始按服务端分页、筛选、排序形态设计。
+- “详情”按钮当前适合使用 Drawer 或 Modal 承载，不需要先新增独立详情页。
+
+### 下一步
+
+1. 等待用户确认是否进入“开始执行”阶段。
+2. 若确认执行，优先实现积分类型、Mock 数据、API Client 和 React Query hooks。
+3. 再实现页面布局、记录表格、详情弹窗/抽屉和路由菜单接入。
+
+### 验证结果
+
+- 已完成 OpenSpec change 脚手架创建。
+- 已完成 OpenSpec 四类文档创建。
+- 尚未修改业务代码。
+- OpenSpec 校验待执行。
+
+---
+
+## 2026-07-03 积分统计页面 OpenSpec 校验完成
+
+### 已完成
+
+- 已复查 `add-points-usage-statistics-page` 的 OpenSpec 状态，proposal、design、specs、tasks 四类文档均已完成。
+- 已修正 OpenSpec 校验命令参数，改用 `openspec validate --changes --json --no-interactive`。
+
+### 当前判断
+
+- 积分统计页面 OpenSpec 任务已具备进入实现阶段的条件。
+- 本阶段只创建和校验 OpenSpec 文档，未修改业务代码。
+
+### 下一步
+
+1. 等待用户确认“开始执行”。
+2. 确认后按 `tasks.md` 从类型、Mock、API Client、React Query hooks 开始实现。
+3. 再接入页面、详情按钮、路由菜单和测试验证。
+
+### 验证结果
+
+- OpenSpec status 已显示 `isComplete: true`。
+- OpenSpec validate 已使用正确参数执行。
+---
+
+## 2026-07-03 个人中心邀请功能 OpenSpec 补充
+
+### 已完成
+
+- 已根据新增参考图，将个人中心右下角“邀请奖励”卡片补充进 `add-personal-center-page` OpenSpec change。
+- 已更新 `proposal.md`，把邀请奖励纳入个人中心页面范围，包含邀请码展示、复制邀请码入口、邀请奖励规则提示。
+- 已更新 `design.md`，在 `PersonalCenterOverview` 中补充 `invitation` 字段，并明确邀请归因、奖励结算不由前端判断。
+- 已更新 `specs/personal-center-page/spec.md`，新增 `Invitation reward card` 需求，覆盖启用、复制、禁用三类场景。
+- 已更新 `tasks.md`，补充邀请字段、邀请卡片、复制交互、响应式布局和测试任务。
+
+### 当前判断
+
+- 邀请功能属于个人中心页面增量，不需要另开 OpenSpec change，直接补入 `add-personal-center-page` 更清晰。
+- 前端本阶段只负责展示邀请码、复制邀请码或邀请链接、展示奖励规则；邀请关系追踪、奖励发放、积分入账应由后端和积分体系负责。
+- 后端字段未定时，前端通过 `PersonalCenterOverview.invitation` 做稳定视图模型预留。
+
+### 下一步
+
+1. 等待用户确认“开始执行”后，按更新后的 `tasks.md` 实施个人中心页面代码。
+2. 实施时为邀请奖励补充 Mock 数据、复制行为、成功/失败反馈和对应测试。
+3. 后续若要做邀请明细、邀请海报、邀请链接统计，应另开更具体的邀请体系或积分奖励 change。
+
+### 验证结果
+
+- 已执行：`cmd /c openspec validate add-personal-center-page --strict`
+- 已执行：`cmd /c openspec status --change add-personal-center-page`
+- 结果：OpenSpec 校验通过，4/4 artifacts complete。
+- 尚未修改业务代码，尚未运行前端测试。
+
+---
+
+## 2026-07-03 积分统计页面视觉约束调整
+
+### 已完成
+
+- 已根据用户反馈更新积分统计页面 OpenSpec 文档。
+- 已明确页面只参考图片的布局结构，不沿用图片中的颜色、字体、卡片、按钮或表格风格。
+- 已要求后续实现时颜色、字体、圆角、卡片、按钮、表格和状态反馈全部采用当前项目现有风格。
+- 已同步更新以下文档：
+  - `openspec/changes/add-points-usage-statistics-page/proposal.md`
+  - `openspec/changes/add-points-usage-statistics-page/design.md`
+  - `openspec/changes/add-points-usage-statistics-page/specs/points-usage-statistics-page/spec.md`
+  - `openspec/changes/add-points-usage-statistics-page/tasks.md`
+
+### 当前判断
+
+- 参考图现在只作为布局参考，不作为视觉主题参考。
+- 后续实现必须先检查现有页面样式，再做积分页排版，避免出现独立的新主题。
+
+### 下一步
+
+1. 等待用户确认“开始执行”。
+2. 确认后按现有项目视觉风格实现积分统计页。
+3. 实现完成后补充页面测试与进展记录。
+
+### 验证结果
+
+- OpenSpec 校验待本次记录追加后执行。
+
+---
+
+## 2026-07-03 登录强制修改密码实现进展 01
+
+### 已完成
+
+- 已进入 OpenSpec apply 阶段，使用 change：`force-password-change-dialog-on-login`。
+- 已读取 `openspec/config.yaml`、`openspec/project.md`、proposal、design、spec 和 tasks。
+- 已复核登录页、登录页测试、auth API、auth 类型、请求层和鉴权存储代码。
+- 已确认 `RequestBusinessError` 会保留 `code`、`message`、`data`，可支撑 `C10001` 分支识别。
+- 已完成 tasks 1.1、1.2、1.3 勾选。
+
+### 当前判断
+
+- 当前生产代码仍调用 `/auth/change-password`，需要改为 `/auth/password`。
+- 当前强制改密 UI 是登录页内联表单，不符合“弹窗”要求。
+- 需要先补失败测试，再实现 API 路径和弹窗交互。
+
+### 下一步
+
+1. 先补充失败测试覆盖 `/auth/password`、Bearer token、强制改密弹窗、校验和成功后重新登录提示。
+2. 再修改 API 层和 `LoginPage.tsx`。
+
+### 验证结果
+
+- 尚未运行测试；下一阶段会先运行新增失败测试确认 RED。
+---
+
+## 2026-07-03 登录强制修改密码实现进展 02
+
+### 已完成
+
+- 已实现 `force-password-change-dialog-on-login` 的业务代码与测试。
+- 已将 `changePassword` 接口路径从 `/auth/change-password` 调整为 `/auth/password`。
+- 已保持 `ChangePasswordRequest` 请求体字段为：`oldPassword`、`newPassword`、`confirmPassword`。
+- 已确保 `/auth/password` 不使用 `noAuth()`，继续走统一请求层自动携带 `Authorization: Bearer <token>`。
+- 已将登录页 `C10001` 分支调整为强制修改密码弹窗：
+  - 登录返回 `C10001` 且带 token 时，先写入临时 token。
+  - 保持用户停留在登录页，不跳转到业务路由。
+  - 使用 Ant Design `Modal` 承载旧密码、新密码、确认密码表单。
+  - 禁止遮罩和键盘误关闭。
+  - 修改成功后清理本地登录态，提示“密码修改成功，请重新登录”，刷新验证码并回到登录表单。
+- 已补充测试：
+  - `src/api/system/auth/index.test.ts`
+  - `src/pages/LoginPage.test.tsx`
+  - `vitest.force-password-change-temp.config.ts`
+- 已完成 tasks 2.x、3.x、4.x、5.1、5.2、5.3 勾选。
+
+### 当前判断
+
+- 本次需求主链路已闭环：`C10001 -> 弹窗 -> /auth/password + token -> 成功后重新登录提示`。
+- 项目默认 Vitest 配置会排除普通 `src/**/*.test.*` 文件，因此本次新增了临时配置 `vitest.force-password-change-temp.config.ts` 用于真实收集相关测试。
+- 登录页仍存在部分历史乱码文案，本次只修复与强制改密链路直接相关的功能和测试，没有扩大重写范围。
+
+### 下一步
+
+1. 如需继续，可以手动联调后端确认 `/auth/password` 的真实响应格式。
+2. 如需收口历史乱码，可单独创建 OpenSpec 或小修任务处理登录页文案编码。
+3. 当前 change 已具备归档条件，后续可执行 OpenSpec archive。
+
+### 验证结果
+
+- 已执行：`npm test -- --config vitest.force-password-change-temp.config.ts`
+  - 结果：3 个测试文件通过，17 个用例通过。
+  - 说明：测试输出仍有 jsdom 对 `getComputedStyle(..., pseudoElements)` 的 “Not implemented” 提示，但未导致失败。
+- 已执行：`npm run typecheck`
+  - 结果：通过。
+- 已执行：`cmd /c openspec validate force-password-change-dialog-on-login --strict`
+  - 结果：通过。
+## 2026-07-03 积分统计页面执行进展
+
+### 已完成
+- 已完成 OpenSpec change `add-points-usage-statistics-page` 的前端实现收尾。
+- 已新增积分统计页面，包含顶部积分概览卡片、使用统计卡片、筛选区、积分使用记录列表和详情 Drawer。
+- 已新增积分使用记录 API 类型、Mock 数据、API Client 与 React Query hooks，为后续真实接口字段预留适配层。
+- 已接入静态路由与动态菜单映射，预留页面权限码 `points:usage:view` 和详情操作扩展点。
+- 已修复详情按钮无障碍名称，解决 Ant Design 小按钮中文文本在测试中被拆分导致查询失败的问题。
+- 已将 OpenSpec `tasks.md` 中本次积分统计页面相关任务全部标记完成。
+
+### 当前判断
+- 页面视觉只复用当前项目已有颜色变量、卡片、表格、按钮和状态组件风格；参考图只用于布局结构，不引入新主题色。
+- 当前后端暂无明确积分字段，前端通过类型和 API 适配层集中预留，避免页面层散落临时字段。
+
+### 验证结果
+- `npm test -- --config vitest.points-usage-statistics-temp.config.ts`：通过，4 个测试文件 / 8 个测试全部通过。
+- `npm run typecheck`：通过。
+- `cmd /c openspec validate --changes --json --no-interactive`：通过，3 个 active change 均 valid。
+
+### 下一步
+- 等真实后端接口字段、菜单路径或按钮级权限规则确认后，将 API 适配层和详情权限点对接到真实数据。
+
+## 2026-07-03 C10001 真实响应契约复核
+
+- 已完成：重新读取 OpenSpec apply 指令、proposal/design/spec/tasks 与登录页相关代码，确认当前实现仍把 token 作为强制改密弹窗打开条件。
+- 当前判断：后端真实返回为 `{ code: "C10001", data: null, msg: "请先修改初始密码" }`，因此弹窗触发必须只依赖 `code === "C10001"`，token 只能作为可选上下文。
+- 下一步：调整 `LoginPage` 类型守卫和弹窗打开条件，补充 data:null 回归测试，并同步修正 OpenSpec 规格。
+- 验证结果：尚未重新跑测试，下一阶段代码修正后执行。
+## 2026-07-03 C10001 data:null 兼容实现
+
+- 已完成：调整 `LoginPage` 强制改密类型守卫，`C10001` 不再要求 `data.accessToken/refreshToken`；弹窗打开条件改为存在改密上下文；只有响应里真的带 token 时才调用 `AuthStorage.setTokenPair`。
+- 当前判断：前端现在兼容 `{ code: "C10001", data: null, msg: "请先修改初始密码" }` 和旧的带 token 响应，不会伪造 token。
+- 下一步：运行登录页/API 定向测试、TypeScript 类型检查和 OpenSpec strict 校验。
+- 验证结果：已确认旧实现下 `data:null` 用例失败；修复后的验证待执行。
+## 2026-07-03 C10001 data:null 验证完成
+
+- 已完成：补充 `C10001 data:null` 弹窗回归测试，并增加 `C10001` 带 token 时仍临时保存 token 的兼容测试；同步更新 OpenSpec spec/design，明确 `C10001` 是弹窗触发信号，`data` 只是可选 token 上下文。
+- 当前判断：登录页已兼容真实返回 `{ code: "C10001", data: null, msg: "请先修改初始密码" }`；不会因缺少 token 而跳过强制改密弹窗，也不会伪造 token。
+- 下一步：可按团队流程进行代码 review；若后端确认 `/auth/password` 在 `data:null` 场景仍强制要求 Bearer token，则需要后端调整返回 token 或提供其他会话鉴权机制。
+- 验证结果：`npm test -- --config vitest.force-password-change-temp.config.ts` 通过（3 files / 18 tests）；`npm run typecheck` 通过；`cmd /c openspec validate force-password-change-dialog-on-login --strict` 通过。
+## 2026-07-03 暂停 C10001 data:null 调整
+
+- 已完成：根据用户要求，暂停“`C10001` 且 `data:null` 也打开强制改密弹窗”的调整方向；登录页恢复为只有 `C10001` 且返回可用 token 时才打开强制改密弹窗。
+- 当前判断：当前生效契约仍是 `/auth/password` 需要 token 鉴权；缺少可用 token 时按登录失败处理并刷新验证码。
+- 下一步：运行定向测试、类型检查和 OpenSpec 校验，确认回退后行为稳定。
+- 验证结果：待执行。
+## 2026-07-03 暂停 data:null 调整验证完成
+
+- 已完成：回退 `LoginPage` 中 `C10001 data:null` 也打开弹窗的逻辑，恢复为必须携带可用 token 才进入强制改密弹窗；同步恢复 OpenSpec spec，并在 design 中追加当前生效决策说明。
+- 当前判断：当前方案仍要求强制改密链路依赖登录接口返回 token，保证 `/auth/password` 能通过统一请求拦截器携带 Bearer token。
+- 下一步：如果后续后端确认 `C10001` 只返回 `data:null`，需要重新确认后端鉴权方案后再改前端。
+- 验证结果：`npm test -- --config vitest.force-password-change-temp.config.ts` 通过（3 files / 18 tests）；`npm run typecheck` 通过；`cmd /c openspec validate force-password-change-dialog-on-login --strict` 通过。

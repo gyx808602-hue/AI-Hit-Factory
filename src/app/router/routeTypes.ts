@@ -15,6 +15,7 @@ export type RouteKey =
   | "content.digitalHumanDetail"
   | "content.digitalHumanVideoTasks"
   | "content.digitalHumanVideoTaskDetail"
+  | "points.usageStatistics"
   | "workspace.tasks"
   | "workspace.assets";
 

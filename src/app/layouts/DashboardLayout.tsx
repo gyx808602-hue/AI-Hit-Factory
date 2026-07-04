@@ -3,6 +3,7 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   ClipboardList,
   FolderOpen,
   Image,
@@ -33,6 +34,7 @@ const iconMap = {
   Image,
   User2,
   ClipboardList,
+  CircleDollarSign,
   FolderOpen,
 }
 

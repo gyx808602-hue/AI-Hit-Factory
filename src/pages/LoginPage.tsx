@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, Form, Input } from "antd";
+import { Alert, Button, Checkbox, Form, Input, Modal, message } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import {
   BadgeCheck,
@@ -28,7 +28,6 @@ type LoginFormValues = {
   username: string;
   password: string;
   captchaKey?: string;
-  captchaId?: string;
   captchaCode: string;
   rememberMe: boolean;
 };
@@ -123,6 +122,10 @@ function getInitialPasswordChangeMessage(error: InitialPasswordChangeErrorLike) 
   return error.message || error.msg || "请先修改初始密码";
 }
 
+function hasPasswordResetToken(context: PasswordResetContext | null) {
+  return Boolean(context?.tokens.accessToken);
+}
+
 export function LoginPage() {
   const [loginForm] = Form.useForm<LoginFormValues>();
   const [changePasswordForm] = Form.useForm<ChangePasswordFormValues>();
@@ -180,7 +183,7 @@ export function LoginPage() {
       const tokens = await login({
         phone: values.username,
         password: values.password,
-        captchaId: getCaptchaKey(captcha),
+        captchaKey: getCaptchaKey(captcha),
         captchaCode: values.captchaCode,
       } satisfies LoginRequest);
 
@@ -219,10 +222,19 @@ export function LoginPage() {
       changePasswordForm.resetFields();
       loginForm.setFieldValue("password", "");
       loginForm.setFieldValue("captchaCode", "");
+      message.success("密码修改成功，请重新登录");
       await refreshCaptcha();
     } finally {
       setChangePasswordSubmitting(false);
     }
+  }
+
+  function handlePasswordDialogCancel() {
+    AuthStorage.clear();
+    setPasswordResetContext(null);
+    changePasswordForm.resetFields();
+    loginForm.setFieldValue("password", "");
+    loginForm.setFieldValue("captchaCode", "");
   }
 
   function handleRememberChange(event: CheckboxChangeEvent) {
@@ -294,93 +306,13 @@ export function LoginPage() {
           <div className="w-full max-w-[420px]">
             <div className="mb-7">
               <h2 className="m-0 text-[32px] font-bold leading-10 text-white">
-                {passwordResetContext ? "首次登录重置密码" : "欢迎回来"}
+                欢迎回来
               </h2>
               <p className="mt-2 text-[13px] text-[var(--text-muted)]">
-                {passwordResetContext
-                  ? `账户 ${passwordResetContext.username} 需要先完成初始密码重置`
-                  : "输入账号信息，继续进入你的 AI 电商内容工作台"}
+                输入账号信息，继续进入你的 AI 电商内容工作台
               </p>
             </div>
-
-            {passwordResetContext ? (
-              <>
-                <Alert
-                  type="warning"
-                  showIcon
-                  message={passwordResetContext.message}
-                  className="mb-5"
-                />
-
-                <Form
-                  form={changePasswordForm}
-                  layout="vertical"
-                  requiredMark={false}
-                  onFinish={handleChangePassword}
-                >
-                  <Form.Item
-                    name="oldPassword"
-                    rules={[{ required: true, message: "请输入旧密码" }]}
-                  >
-                    <Input.Password
-                      size="large"
-                      prefix={<LockKeyhole size={16} />}
-                      placeholder="请输入旧密码"
-                      autoComplete="current-password"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    name="newPassword"
-                    rules={[
-                      { required: true, message: "请输入新密码" },
-                      { min: 6, message: "新密码不能少于 6 位" },
-                    ]}
-                  >
-                    <Input.Password
-                      size="large"
-                      prefix={<LockKeyhole size={16} />}
-                      placeholder="请输入新密码"
-                      autoComplete="new-password"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    name="confirmPassword"
-                    dependencies={["newPassword"]}
-                    rules={[
-                      { required: true, message: "请再次输入新密码" },
-                      ({ getFieldValue }) => ({
-                        validator(_, value) {
-                          if (!value || getFieldValue("newPassword") === value) {
-                            return Promise.resolve();
-                          }
-                          return Promise.reject(new Error("两次输入的新密码不一致"));
-                        },
-                      }),
-                    ]}
-                  >
-                    <Input.Password
-                      size="large"
-                      prefix={<LockKeyhole size={16} />}
-                      placeholder="请再次输入新密码"
-                      autoComplete="new-password"
-                    />
-                  </Form.Item>
-
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    size="large"
-                    loading={changePasswordSubmitting}
-                    className="w-full"
-                  >
-                    确认重置密码
-                  </Button>
-                </Form>
-              </>
-            ) : (
-              <>
+            <>
                 <Form
                   form={loginForm}
                   layout="vertical"
@@ -501,10 +433,102 @@ export function LoginPage() {
                   </div>
                 </div>
               </>
-            )}
           </div>
         </section>
       </div>
+
+      <Modal
+        title="首次登录重置密码"
+        open={hasPasswordResetToken(passwordResetContext)}
+        mask={{ closable: false }}
+        keyboard={false}
+        footer={null}
+        destroyOnHidden
+        transitionName=""
+        maskTransitionName=""
+        onCancel={handlePasswordDialogCancel}
+      >
+        {passwordResetContext ? (
+          <>
+            <Alert
+              type="warning"
+              showIcon
+              title={passwordResetContext.message}
+              className="mb-5"
+            />
+            <p className="mb-4 text-[13px] text-[var(--text-muted)]">
+              账户 {passwordResetContext.username} 需要先完成初始密码重置。
+            </p>
+
+            <Form
+              form={changePasswordForm}
+              layout="vertical"
+              requiredMark={false}
+              onFinish={handleChangePassword}
+            >
+              <Form.Item
+                name="oldPassword"
+                rules={[{ required: true, message: "请输入旧密码" }]}
+              >
+                <Input.Password
+                  size="large"
+                  prefix={<LockKeyhole size={16} />}
+                  placeholder="请输入旧密码"
+                  autoComplete="current-password"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="newPassword"
+                rules={[
+                  { required: true, message: "请输入新密码" },
+                  { min: 6, message: "新密码不能少于 6 位" },
+                ]}
+              >
+                <Input.Password
+                  size="large"
+                  prefix={<LockKeyhole size={16} />}
+                  placeholder="请输入新密码"
+                  autoComplete="new-password"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                dependencies={["newPassword"]}
+                rules={[
+                  { required: true, message: "请再次输入新密码" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("newPassword") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error("两次输入的新密码不一致"));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  size="large"
+                  prefix={<LockKeyhole size={16} />}
+                  placeholder="请再次输入新密码"
+                  autoComplete="new-password"
+                />
+              </Form.Item>
+
+              <Button
+                type="primary"
+                htmlType="submit"
+                size="large"
+                loading={changePasswordSubmitting}
+                className="w-full"
+              >
+                确认重置密码
+              </Button>
+            </Form>
+          </>
+        ) : null}
+      </Modal>
     </div>
   );
 }
