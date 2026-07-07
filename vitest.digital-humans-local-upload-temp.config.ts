@@ -4,7 +4,7 @@ export default {
   ...baseConfig,
   test: {
     ...baseConfig.test,
-    include: ["src/pages/DigitalHumansPage.test.tsx"],
+    include: ["src/pages/digital-human/DigitalHumansPage.test.tsx"],
     exclude: ["**/node_modules/**", "**/dist/**", "**/.{idea,git,cache,output,temp}/**"],
     passWithNoTests: false,
   },

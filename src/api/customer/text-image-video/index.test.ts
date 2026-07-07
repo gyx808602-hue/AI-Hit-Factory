@@ -111,9 +111,9 @@ describe("text image video api", () => {
     await deleteTextImageVideoTask(101, client);
 
     expect(seen.map((item) => `${item.method}:${item.url}`)).toEqual([
-      "post:/user-api/customer/text-image-video/tasks",
-      "get:/user-api/customer/text-image-video/tasks/101",
-      "delete:/user-api/customer/text-image-video/tasks/101",
+      "post:/text-image-video/tasks",
+      "get:/text-image-video/tasks/101",
+      "delete:/text-image-video/tasks/101",
     ]);
   });
 });

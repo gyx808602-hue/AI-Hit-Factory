@@ -281,3 +281,22 @@
 ### 当前判断
 - 这次改动属于纯前端表单布局微调，没有改变创建任务的数据结构，也没有影响 `topic -> AI生成文案 -> 手动编辑 prompt -> 创建任务` 的交互链路。
 - 现在用户会先完成主题与图片输入，再在表单最后统一编辑最终文案，交互顺序更符合“先给素材，再写最终文案”的心智模型。
+## 2026-07-07 提示词长度提升到约 1500 字
+
+### 已完成
+- 已将文图生视频创建页的提示词输入上限从页面展示的 `500 字` 提升为 `1500 字`。
+- 已在 `src/pages/ImageVideoPage.tsx` 中新增 `PROMPT_MAX_LENGTH = 1500`，并同时用于 `Input.TextArea` 的 `maxLength` 与字数计数展示。
+- 已补充 `src/pages/ImageVideoPage.test.tsx` 回归测试，锁定 `maxlength="1500"` 和 `0 / 1500 字` 展示。
+
+### 当前判断
+- 图生视频、文生视频、图文混合共用同一个创建页提示词输入区，因此一处限制即可覆盖三种输入模式。
+- 本次不改 API 契约，不新增 OpenSpec 任务，不引入新抽象；只在前端输入边界层完成最小闭环。
+
+### 下一步
+1. 运行文图生视频创建页定向测试。
+2. 运行 TypeScript 类型检查。
+
+### 验证结果
+- `npx vitest run -c vitest.text-image-video-temp.config.ts src/pages/ImageVideoPage.test.tsx -t "limits the video prompt"`：通过，1 个用例通过。
+- `npm run typecheck`：通过。
+- `npx vitest run -c vitest.text-image-video-temp.config.ts src/pages/ImageVideoPage.test.tsx`：未全量通过，失败点为历史用例仍在查找已注释的“AI 生成文案”按钮，以及旧的 `input[name="file"]` 上传选择器；新增的 1500 字长度用例已通过。

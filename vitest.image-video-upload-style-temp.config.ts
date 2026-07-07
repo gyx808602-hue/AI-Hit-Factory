@@ -4,7 +4,7 @@ export default {
   ...baseConfig,
   test: {
     ...baseConfig.test,
-    include: ['src/pages/ImageVideoPage.upload-style-regression.test.tsx'],
+    include: ['src/pages/content/ImageVideoPage.upload-style-regression.test.tsx'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/.{idea,git,cache,output,temp}/**'],
     passWithNoTests: false,
   },

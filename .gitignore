@@ -4,3 +4,5 @@ dist
 vite-dev*.log
 .playwright-mcp/
 dist.zip
+.codex/skills/ui-ux-pro-max/data/_sync_all.py
+.codex/

@@ -180,6 +180,24 @@ describe("App auth routing", () => {
     });
   });
 
+  it("keeps image video tasks selected on the create page", async () => {
+    vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
+    AuthStorage.setAccessToken("access-token");
+
+    renderApp(["/image-video"]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("image-video-prompt-section")).toBeInTheDocument();
+    });
+
+    const highlightedMenuButtons = screen
+      .getAllByRole("button")
+      .filter((button) => button.style.background === "rgba(124, 92, 252, 0.16)");
+
+    expect(highlightedMenuButtons).toHaveLength(1);
+    expect(highlightedMenuButtons[0]).toHaveAccessibleName("文图生视频任务");
+  });
+
   it("keeps the digital human video task menu selected on the list page", async () => {
     vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
     AuthStorage.setAccessToken("access-token");

@@ -27,9 +27,13 @@ describe("routeRegistry", () => {
   });
 
   it("registers text-image-video task routes for list and detail pages", () => {
+    const createRoute = getRouteByKey("content.imageVideo");
     const taskListRoute = getRouteByKey("content.imageVideoTasks");
     const taskDetailRoute = getRouteByKey("content.imageVideoTaskDetail");
 
+    expect(createRoute.path).toBe("/image-video");
+    expect(createRoute.meta.hideInMenu).toBe(true);
+    expect(createRoute.meta.activeMenuKey).toBe("content.imageVideoTasks");
     expect(taskListRoute.path).toBe("/image-video/tasks");
     expect(taskListRoute.meta.hideInMenu).not.toBe(true);
     expect(taskDetailRoute.path).toBe("/image-video/tasks/:taskId");

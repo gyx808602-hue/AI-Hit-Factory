@@ -30,16 +30,17 @@ export default defineConfig({
     passWithNoTests: true,
   },
   server: {
-   proxy: {
-    "/api": {
-      // Target 保持最纯粹的根域名/IP
-      // target: "http://192.168.77.204:8080", 
-      target: "http://47.96.142.28:9999",
-      changeOrigin: true,
-      // 在重写规则里，把 /api 替换成后端实际需要的前缀
-      rewrite: (path) => path.replace(/^\/api/, "/api/user-api/customer"), 
-      // rewrite: (path) => path.replace(/^\/api/, "/api/v1"), 
-    },
+    port: 3000,
+    proxy: {
+      "/api": {
+        // Target 保持最纯粹的根域名/IP
+        target: "http://192.168.77.204:8081", 
+        // target: "http://47.96.142.28:9999",
+        changeOrigin: true,
+        // 在重写规则里，把 /api 替换成后端实际需要的前缀
+        // rewrite: (path) => path.replace(/^\/api/, "/api/user-api/customer"), 
+        rewrite: (path) => path.replace(/^\/api/, "/v1"), 
+      },
   },
 }
 });

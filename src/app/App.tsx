@@ -3,10 +3,11 @@ import zhCN from "antd/locale/zh_CN";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { matchRoutes, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../api/system/auth";
-import { ForbiddenPage } from "../pages/ForbiddenPage";
-import { NotFoundPage } from "../pages/NotFoundPage";
+import { ForbiddenPage } from "../pages/system/ForbiddenPage";
+import { NotFoundPage } from "../pages/system/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
 import { DashboardLayout } from "./layouts/DashboardLayout";
+import { clearAllKeepAliveRouteCaches, KeepAliveOutlet } from "./router/KeepAliveOutlet";
 import { resolveHomeRoutePath } from "./router/homeRoute";
 import { routeRegistry } from "./router/routeRegistry";
 import { resolveRouteAccess } from "./router/routeGuards";
@@ -111,6 +112,38 @@ function getCurrentUserDisplayName() {
   return AuthStorage.getCurrentUserName() || "商家用户";
 }
 
+type WorkspaceOutletProps = {
+  activeRouteKey: AppRoute["key"];
+  availableRoutes: AppRoute[];
+  currentUserName: string;
+  menuItems: NavigationItem[];
+  onLogout: () => void;
+  onNavigate: (item: NavigationItem) => void;
+  resetKey: string;
+};
+
+function WorkspaceOutlet({
+  activeRouteKey,
+  availableRoutes,
+  currentUserName,
+  menuItems,
+  onLogout,
+  onNavigate,
+  resetKey,
+}: WorkspaceOutletProps) {
+  return (
+    <DashboardLayout
+      activeRouteKey={activeRouteKey}
+      currentUserName={currentUserName}
+      menuItems={menuItems}
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <KeepAliveOutlet availableRoutes={availableRoutes} resetKey={resetKey} />
+    </DashboardLayout>
+  );
+}
+
 export function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -139,6 +172,14 @@ export function App() {
   const routeAccess = resolveRouteAccess(activeRoute, { hasAccessToken, bypassTokenCheck });
   const homeRoutePath = resolveHomeRoutePath(dynamicRouteState.menuItems, availableRoutes);
   const currentUserName = getCurrentUserDisplayName();
+  const routeCacheResetKey = useMemo(() => {
+    // 缓存作用域由当前可访问受保护路由决定。
+    // 菜单权限、路径或 cache 开关变化时，旧页面实例必须清空，避免旧权限上下文残留。
+    return availableRoutes
+      .filter((route) => route.meta.requiresAuth)
+      .map((route) => `${route.key}:${route.path}:${route.meta.cache ? "cache" : "plain"}`)
+      .join("|");
+  }, [availableRoutes]);
 
   useEffect(() => {
     function handleAuthExpired() {
@@ -182,6 +223,8 @@ export function App() {
     try {
       await logout();
     } finally {
+      // 退出登录时清空所有受保护页面实例，避免下个账号看到上个账号的筛选/表单状态。
+      clearAllKeepAliveRouteCaches();
       AuthStorage.clear();
       const redirect = encodeURIComponent(buildRedirectTarget(location.pathname, location.search));
       navigate(`/login?redirect=${redirect}`, { replace: true });
@@ -221,18 +264,16 @@ export function App() {
 
   const currentRoute = routeAccess.route;
   const activeWorkspaceRoute = resolveActiveMenuRoute(currentRoute, dynamicRouteState.routes);
-  const activePage = (
-    <Suspense fallback={<PageFallback />}>
-      <Routes>
-        {availableRoutes.map((route) => {
-          const Page = route.component;
-          return <Route key={route.key} path={route.path} element={<Page />} />;
-        })}
-        <Route path="/dashboard" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Suspense>
-  );
+  const publicRouteElements = publicRoutes.map((route) => {
+    const Page = route.component;
+    return <Route key={route.key} path={route.path} element={<Page />} />;
+  });
+  const protectedRouteElements = availableRoutes
+    .filter((route) => route.meta.requiresAuth !== false)
+    .map((route) => {
+      const Page = route.component;
+      return <Route key={route.key} path={route.path} element={<Page />} />;
+    });
 
   function handleNavigate(item: NavigationItem) {
     if (item.kind === "external") {
@@ -284,21 +325,31 @@ export function App() {
         },
       }}
     >
-      {currentRoute.meta.requiresAuth === false ? (
-        activePage
-      ) : (
-        <DashboardLayout
-          activeRouteKey={activeWorkspaceRoute.key}
-          currentUserName={currentUserName}
-          menuItems={dynamicRouteState.menuItems}
-          onNavigate={handleNavigate}
-          onLogout={() => {
-            void handleLogout();
-          }}
-        >
-          {activePage}
-        </DashboardLayout>
-      )}
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          {publicRouteElements}
+          <Route
+            element={
+              <WorkspaceOutlet
+                activeRouteKey={activeWorkspaceRoute.key}
+                availableRoutes={availableRoutes}
+                currentUserName={currentUserName}
+                menuItems={dynamicRouteState.menuItems}
+                onNavigate={handleNavigate}
+                onLogout={() => {
+                  void handleLogout();
+                }}
+                resetKey={routeCacheResetKey}
+              />
+            }
+          >
+            {/* 受保护页面作为 DashboardLayout 的子路由渲染，KeepAliveOutlet 才能通过 useOutlet 拿到当前页面实例。 */}
+            {protectedRouteElements}
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </ConfigProvider>
   );
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mapTaskDetailToFormValues, mapFormValuesToSavePayload } from "./form";
 
 describe("video-remix form helpers", () => {
-  it("uses seedance2.0 as the default target model", () => {
+  it("uses dreamina-seedance-2-0 as the default target model", () => {
     const values = mapTaskDetailToFormValues({
       id: 1,
       name: "杩界垎浠诲姟",
@@ -10,10 +10,10 @@ describe("video-remix form helpers", () => {
       form: {},
     });
 
-    expect(values.targetVideoModel).toBe("seedance2.0");
+    expect(values.targetVideoModel).toBe("dreamina-seedance-2-0");
   });
 
-  it("falls back to seedance2.0 when save payload target model is empty", () => {
+  it("falls back to dreamina-seedance-2-0 when save payload target model is empty", () => {
     const payload = mapFormValuesToSavePayload({
       name: "追爆任务",
       remark: "备注",
@@ -29,7 +29,7 @@ describe("video-remix form helpers", () => {
       generationDuration: 15,
     });
 
-    expect(payload.targetVideoModel).toBe("seedance2.0");
+    expect(payload.targetVideoModel).toBe("dreamina-seedance-2-0");
   });
 
   it("maps task detail into editable form values", () => {
@@ -47,7 +47,7 @@ describe("video-remix form helpers", () => {
 
     expect(values.name).toBe("追爆任务");
     expect(values.remark).toBe("备注");
-    expect(values.targetVideoModel).toBe("wan2.1-i2v");
+    expect(values.targetVideoModel).toBe("dreamina-seedance-2-0");
     expect(values.referenceVideoUrl).toBe("https://example.com/source.mp4");
     expect(values.productImageUrlsText).toBe("https://example.com/p1.png\nhttps://example.com/p2.png");
     expect(values.editablePrompt).toBe("");

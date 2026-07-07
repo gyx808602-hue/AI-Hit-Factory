@@ -603,3 +603,26 @@ MVP 阶段使用固定角色：
 - `doc/component-guidelines.md`
 
 然后在 `openspec/project.md` 只保留摘要和链接，避免全局上下文过长影响每次 OpenSpec 指令的聚焦度。
+
+---
+
+## 10. UI 组件与样式统一规范补充（2026-07-07）
+
+### 10.1 Ant Design 优先
+
+- 新增或重构 UI 时，表单、输入控件、选择器、日期/时间控件、表格、分页、上传、Modal、Drawer、Popover、Tooltip、Tabs、Steps、Menu、Message、Notification、Result、Empty、Skeleton 等交互组件默认优先使用 Ant Design。
+- 只有当 Ant Design 无法表达业务形态，或该区域属于纯布局/展示容器时，才使用 Tailwind + 原生 HTML 组合实现。
+- 不允许为了视觉自由度绕开 Ant Design 的可访问性、键盘交互、loading、disabled、校验反馈和语义状态能力。
+
+### 10.2 二次封装优先级
+
+- 对 2 个以上页面重复出现的 Ant Design 组合，优先抽为轻量二次封装，例如上传字段、筛选表单、详情 Drawer、状态标签、分页表格壳、页面标题区。
+- 二次封装必须服务稳定复用能力，禁止过早创建大而全的 `BaseForm`、`BaseTable`、`BaseModal`。
+- 二次封装应优先放在具体 feature 内；跨模块稳定复用后再提升到 `shared/components`。
+
+### 10.3 Tailwind 与 UI/UX Pro Max
+
+- TailwindCSS 负责布局、间距、响应式、外层容器和局部视觉微调。
+- UI/UX Pro Max 负责辅助检查体验质量，包括表单 label、加载反馈、响应式表格、按钮防重复提交、可访问性、视觉层级和移动端可用性。
+- UI/UX Pro Max 不得直接替代项目现有主题，不得直接引入新配色、新字体、暗色主题或营销页结构。
+- OpenSpec design 文档中涉及 UI 时，必须说明 Ant Design 组件选型、二次封装判断、Tailwind 使用边界，以及 UI/UX Pro Max 采纳的检查项。

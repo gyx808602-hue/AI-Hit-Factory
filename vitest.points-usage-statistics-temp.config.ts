@@ -6,7 +6,7 @@ export default {
     ...baseConfig.test,
     include: [
       "src/api/points/usage/index.test.ts",
-      "src/pages/PointsUsageStatisticsPage.test.tsx",
+      "src/pages/points/PointsUsageStatisticsPage.test.tsx",
       "src/app/router/pointsRouteRegistry.test.ts",
       "src/app/router/pointsDynamicRoutes.test.ts",
     ],

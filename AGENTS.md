@@ -140,3 +140,39 @@
 
 - 回答结束时，可自然地补一句类似“哥哥，写好了”作为固定风格收尾。
 - 如未实际执行验证命令，必须明确说明“尚未验证”。
+
+---
+
+## UI 组件与样式统一规范补充（2026-07-07）
+
+### Ant Design 优先原则
+
+- 后续所有页面、弹窗、表单、列表、表格、上传、分页、空状态、加载状态、提示反馈，默认优先使用 Ant Design 官方组件。
+- 禁止在已有 Ant Design 能力可满足需求时，手写原生 `button/input/select/table/dialog` 作为主要交互控件。
+- Ant Design 组件优先通过 `props`、`ConfigProvider theme token`、组件 token、语义化状态和已有项目 CSS 变量调整，不优先用 Tailwind 强行覆盖组件内部复杂 DOM。
+- 图标优先使用项目已安装的 `lucide-react` 或 Ant Design Icons，保持同一页面内图标风格一致；不得使用 emoji 作为结构性图标。
+
+### 二次封装原则
+
+- 如果同类 Ant Design 组合在 2 个以上真实业务场景中重复出现，应优先沉淀为二次封装组件。
+- 适合二次封装的对象包括：页面标题区、筛选表单、上传字段、状态标签、详情 Drawer、确认弹窗、权限禁用按钮、任务状态反馈、分页表格外壳。
+- 二次封装必须增加稳定业务语义或稳定交互行为；禁止只为了少写几行样式而包装一层没有语义的 `BaseButton/BaseCard/BaseModal`。
+- 不稳定或仅单页面使用的组件先放在对应 `features/<module>/components` 或页面局部，经过复用验证后再提升到 `shared/components`。
+- 二次封装要保留 Ant Design 原组件的可访问性、键盘交互、loading/disabled/error 状态能力，不得为了外观统一牺牲交互语义。
+
+### Tailwind + UI/UX Pro Max 使用边界
+
+- TailwindCSS 优先用于页面布局、响应式断点、外层容器间距、栅格/Flex、局部微调和业务区块排版。
+- UI/UX Pro Max 作为体验检查和设计建议工具，不作为覆盖项目主题的新设计系统来源。
+- 使用 UI/UX Pro Max 时，必须先对齐当前项目已有 Ant Design + Tailwind 风格，再吸收其可访问性、表单反馈、响应式、加载状态、触控尺寸、视觉层级建议。
+- 不得直接套用 UI/UX Pro Max 推荐的新配色、新字体、暗色主题、营销页 hero 模式或与当前后台系统冲突的视觉风格。
+- 新页面或重构页面在 OpenSpec design 中应明确：Ant Design 组件选型、是否需要二次封装、Tailwind 使用范围、UI/UX Pro Max 只采纳哪些检查项。
+
+### UI 验收检查项
+
+- 表单字段必须有可见 label 或 Ant Design Form.Item label，不使用 placeholder 代替 label。
+- 异步提交按钮必须有 loading/disabled，避免重复提交。
+- 列表、表格、卡片网格必须覆盖 loading、empty、error、disabled/permission 状态。
+- 宽表格必须考虑横向滚动、列宽、分页和小屏可用性。
+- 上传类交互优先使用 Ant Design Upload/Upload.Dragger，并复用项目 API Client，不绕开统一 request 层。
+- 页面级布局优先复用 `PageShell`、`MetricCard`、`StatusPill` 等已稳定组件；发现重复结构后再有边界地补充 shared 组件。

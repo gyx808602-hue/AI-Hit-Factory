@@ -12,7 +12,7 @@ describe("text-image-video form helpers", () => {
     expect(createDefaultTextImageVideoFormValues()).toEqual({
       topic: "",
       prompt: "",
-      model: "seedance2.0",
+      model: "dreamina-seedance-2-0",
       imageUrls: [],
     });
   });

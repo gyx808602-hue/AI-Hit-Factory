@@ -19,6 +19,22 @@ export const ApiCode = {
   permissionDenied: "A0301",
 } as const;
 
+const businessCodeMessages: Record<string, string> = {
+  C10001: "请先修改初始密码",
+  C10010: "客户账号不存在",
+  C10011: "客户账号已停用",
+  C10012: "账号或密码错误",
+  C10013: "两次输入的密码不一致",
+  C10014: "密码强度不足",
+  C10015: "登录失败次数过多，请稍后再试",
+  C10020: "手机号已存在",
+  C10021: "缺少必填字段",
+  C10030: "图形验证码错误或已过期",
+  C40101: "访问令牌无效或已过期",
+  C40102: "访问令牌已加入黑名单，请重新登录",
+  C40103: "刷新令牌无效或已过期",
+};
+
 type NotifyError = (message: string) => void;
 
 export class RequestBusinessError<TData = unknown> extends Error {
@@ -82,6 +98,11 @@ function getBusinessCode(data: unknown) {
     : "";
 }
 
+function getBusinessMessage(data: ApiResult | undefined, fallback: string) {
+  const code = getBusinessCode(data);
+  return data?.msg || businessCodeMessages[code] || fallback;
+}
+
 function shouldNotifyError(config?: AxiosRequestConfig) {
   return !(config as RequestConfig | undefined)?.silentError;
 }
@@ -138,7 +159,7 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
         return response.data.data;
       }
 
-      const message = response.data?.msg || "系统出错";
+      const message = getBusinessMessage(response.data, "系统出错");
       if (shouldNotifyError(response.config)) {
         notifyError(message);
         
@@ -158,7 +179,7 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       }
 
       const code = getBusinessCode(response.data);
-      const message = response.data?.msg || "请求失败";
+      const message = getBusinessMessage(response.data, "请求失败");
 
       if (isAccessTokenExpiredCode(code)) {
         if (!config || retriedConfigs.has(config as InternalAxiosRequestConfig)) {

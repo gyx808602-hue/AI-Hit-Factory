@@ -7,9 +7,9 @@ export default {
     include: [
       "src/features/text-image-video/form.test.ts",
       "src/api/customer/text-image-video/index.test.ts",
-      "src/pages/ImageVideoPage.test.tsx",
-      "src/pages/TextImageVideoTaskDetailPage.test.tsx",
-      "src/pages/TextImageVideoTasksPage.test.tsx",
+      "src/pages/content/ImageVideoPage.test.tsx",
+      "src/pages/content/TextImageVideoTaskDetailPage.test.tsx",
+      "src/pages/content/TextImageVideoTasksPage.test.tsx",
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "**/.{idea,git,cache,output,temp}/**"],
     passWithNoTests: false,

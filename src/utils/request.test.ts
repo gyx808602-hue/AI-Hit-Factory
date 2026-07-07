@@ -115,6 +115,61 @@ describe("request client", () => {
     expect(notifyError).toHaveBeenCalledWith("业务失败");
   });
 
+  it("uses configured business code message when backend omits msg", async () => {
+    const notifyError = vi.fn();
+    const client = createRequestClient({
+      notifyError,
+      adapter: createAdapter((config) => ({
+        config,
+        data: { code: "C10012", data: null },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      })),
+    });
+
+    await expect(client.post("/login")).rejects.toMatchObject({
+      code: "C10012",
+      message: "账号或密码错误",
+    });
+    expect(notifyError).toHaveBeenCalledWith("账号或密码错误");
+  });
+
+  it("uses configured auth code message for http error responses when backend omits msg", async () => {
+    const notifyError = vi.fn();
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      notifyError,
+      onAuthExpired,
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+        const response: AxiosResponse = {
+          config: requestConfig,
+          data: { code: "C40101", data: null },
+          headers: {},
+          status: 401,
+          statusText: "Unauthorized",
+        };
+
+        throw {
+          config: requestConfig,
+          isAxiosError: true,
+          name: "AxiosError",
+          message: "Request failed with status code 401",
+          response,
+          toJSON: () => ({}),
+        };
+      },
+    });
+
+    await expect(client.get("/secure")).rejects.toMatchObject({
+      code: "C40101",
+      message: "访问令牌无效或已过期",
+    });
+    expect(notifyError).toHaveBeenCalledWith("访问令牌无效或已过期");
+    expect(onAuthExpired).not.toHaveBeenCalled();
+  });
+
   it("rejects with a business error that preserves code and data", async () => {
     const client = createRequestClient({
       adapter: createAdapter((config) => ({

@@ -7,9 +7,9 @@ export default {
     include: [
       "src/api/aigc/video-remix-tasks/index.test.ts",
       "src/build/manualChunks.test.ts",
-      "src/pages/ViralRemixPage.test.tsx",
-      "src/pages/VideoRemixTasksPage.test.tsx",
-      "src/pages/VideoRemixTaskDetailPage.test.tsx",
+      "src/pages/content/ViralRemixPage.test.tsx",
+      "src/pages/content/VideoRemixTasksPage.test.tsx",
+      "src/pages/content/VideoRemixTaskDetailPage.test.tsx",
       "src/features/video-remix/status.test.ts",
       "src/features/video-remix/form.test.ts",
       "src/app/router/routeRegistry.test.ts",

@@ -2,103 +2,103 @@ import { lazy } from 'react'
 import type { AppRoute, RouteKey } from './routeTypes'
 
 const DashboardPage = lazy(() =>
-  import('../../pages/DashboardPage').then((module) => ({
+  import('../../pages/workspace/DashboardPage').then((module) => ({
     default: module.DashboardPage,
   })),
 )
 
 const ProductVideoPage = lazy(() =>
-  import('../../pages/ProductVideoPage').then((module) => ({
+  import('../../pages/content/ProductVideoPage').then((module) => ({
     default: module.ProductVideoPage,
   })),
 )
 
 const ViralRemixPage = lazy(() =>
-  import('../../pages/ViralRemixPage').then((module) => ({
+  import('../../pages/content/ViralRemixPage').then((module) => ({
     default: module.ViralRemixPage,
   })),
 )
 
 const ViralRemixTasksPage = lazy(() =>
-  import('../../pages/VideoRemixTasksPage').then((module) => ({
+  import('../../pages/content/VideoRemixTasksPage').then((module) => ({
     default: module.VideoRemixTasksPage,
   })),
 )
 
 const ViralRemixTaskDetailPage = lazy(() =>
-  import('../../pages/VideoRemixTaskDetailPage').then((module) => ({
+  import('../../pages/content/VideoRemixTaskDetailPage').then((module) => ({
     default: module.VideoRemixTaskDetailPage,
   })),
 )
 
 const ImageVideoPage = lazy(() =>
-  import('../../pages/ImageVideoPage').then((module) => ({
+  import('../../pages/content/ImageVideoPage').then((module) => ({
     default: module.ImageVideoPage,
   })),
 )
 
 const TextImageVideoTasksPage = lazy(() =>
-  import('../../pages/TextImageVideoTasksPage').then((module) => ({
+  import('../../pages/content/TextImageVideoTasksPage').then((module) => ({
     default: module.TextImageVideoTasksPage,
   })),
 )
 
 const TextImageVideoTaskDetailPage = lazy(() =>
-  import('../../pages/TextImageVideoTaskDetailPage').then((module) => ({
+  import('../../pages/content/TextImageVideoTaskDetailPage').then((module) => ({
     default: module.TextImageVideoTaskDetailPage,
   })),
 )
 
 const DigitalHumansPage = lazy(() =>
-  import('../../pages/DigitalHumansPage').then((module) => ({
+  import('../../pages/digital-human/DigitalHumansPage').then((module) => ({
     default: module.DigitalHumansPage,
   })),
 )
 
 const CustomisedAudiosPage = lazy(() =>
-  import('../../pages/CustomisedAudiosPage').then((module) => ({
+  import('../../pages/digital-human/CustomisedAudiosPage').then((module) => ({
     default: module.CustomisedAudiosPage,
   })),
 )
 
 const DigitalHumanDetailPage = lazy(() =>
-  import('../../pages/DigitalHumanDetailPage').then((module) => ({
+  import('../../pages/digital-human/DigitalHumanDetailPage').then((module) => ({
     default: module.DigitalHumanDetailPage,
   })),
 )
 
 const DigitalHumanVideoTasksPage = lazy(() =>
-  import('../../pages/DigitalHumanVideoTasksPage').then((module) => ({
+  import('../../pages/digital-human/DigitalHumanVideoTasksPage').then((module) => ({
     default: module.DigitalHumanVideoTasksPage,
   })),
 )
 
 const DigitalHumanVideoTaskDetailPage = lazy(() =>
-  import('../../pages/DigitalHumanVideoTaskDetailPage').then((module) => ({
+  import('../../pages/digital-human/DigitalHumanVideoTaskDetailPage').then((module) => ({
     default: module.DigitalHumanVideoTaskDetailPage,
   })),
 )
 
 const TaskRecordsPage = lazy(() =>
-  import('../../pages/TaskRecordsPage').then((module) => ({
+  import('../../pages/workspace/TaskRecordsPage').then((module) => ({
     default: module.TaskRecordsPage,
   })),
 )
 
 const PointsUsageStatisticsPage = lazy(() =>
-  import('../../pages/PointsUsageStatisticsPage').then((module) => ({
+  import('../../pages/points/PointsUsageStatisticsPage').then((module) => ({
     default: module.PointsUsageStatisticsPage,
   })),
 )
 
 const AssetLibraryPage = lazy(() =>
-  import('../../pages/AssetLibraryPage').then((module) => ({
+  import('../../pages/workspace/AssetLibraryPage').then((module) => ({
     default: module.AssetLibraryPage,
   })),
 )
 
 const LoginPage = lazy(() =>
-  import('../../pages/LoginPage').then((module) => ({
+  import('../../pages/auth/LoginPage').then((module) => ({
     default: module.LoginPage,
   })),
 )
@@ -181,7 +181,9 @@ export const routeRegistry: AppRoute[] = [
       title: '文图生成视频',
       icon: 'Image',
       cache: false,
+      hideInMenu: true,
       requiresAuth: true,
+      activeMenuKey: 'content.imageVideoTasks',
     },
   },
   {
