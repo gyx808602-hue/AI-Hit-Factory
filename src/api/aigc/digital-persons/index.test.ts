@@ -115,7 +115,7 @@ describe("digital persons api", () => {
       client,
     );
 
-    expect(seen.url).toBe("/api/aigc/digital-persons");
+    expect(seen.url).toBe("/digital-persons");
     expect(seen.params).toMatchObject({
       name: "本地训练数字人",
       trainType: "both",
@@ -128,18 +128,18 @@ describe("digital persons api", () => {
     expect(result.id).toBe("person-2");
   });
 
-  it("submits query params only when creating with remote file url", async () => {
+  it("submits json body when creating with remote file url", async () => {
     const seen = {
       url: "",
       params: {} as Record<string, unknown>,
-      hasData: true,
+      data: undefined as unknown,
     };
 
     const client = createRequestClient({
       adapter: createAdapter((config) => {
         seen.url = config.url ?? "";
         seen.params = (config.params ?? {}) as Record<string, unknown>;
-        seen.hasData = Boolean(config.data);
+        seen.data = config.data;
 
         return {
           config,
@@ -172,15 +172,15 @@ describe("digital persons api", () => {
       client,
     );
 
-    expect(seen.url).toBe("/api/aigc/digital-persons");
-    expect(seen.params).toMatchObject({
+    expect(seen.url).toBe("/digital-persons");
+    expect(seen.params).toEqual({});
+    expect(JSON.parse(seen.data as string)).toMatchObject({
       name: "远程训练数字人",
       fileUrl: "https://oss.example.com/trainer.mp4",
       trainType: "voice",
       language: "en",
       errorSkip: false,
     });
-    expect(seen.hasData).toBe(false);
     expect(result.id).toBe("person-3");
   });
 
@@ -217,9 +217,9 @@ describe("digital persons api", () => {
     await deleteDigitalPerson("person-9", client);
 
     expect(seenUrls).toEqual([
-      "/api/aigc/digital-persons/person-9",
-      "/api/aigc/digital-persons/person-9/refresh",
-      "/api/aigc/digital-persons/person-9",
+      "/digital-persons/person-9",
+      "/digital-persons/person-9/refresh",
+      "/digital-persons/person-9",
     ]);
   });
 });

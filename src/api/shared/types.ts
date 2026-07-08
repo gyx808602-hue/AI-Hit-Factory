@@ -10,7 +10,8 @@ export interface PageQuery {
 }
 
 export interface PageData<T> {
-  list: T[];
+  list?: T[];
+  records?: T[];
   total: number;
 }
 

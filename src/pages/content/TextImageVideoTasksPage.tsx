@@ -28,7 +28,7 @@ function useTaskPage(status: StatusFilter) {
         status: status === "all" ? undefined : Number(status),
       }),
     refetchInterval: (query) => {
-      const tasks = query.state.data?.list ?? [];
+      const tasks = query.state.data?.records ?? [];
       const hasProcessingTask = tasks.some(
         (task) => getTextImageVideoTaskStatusMeta(task).resultState === "processing",
       );
@@ -112,7 +112,7 @@ export function TextImageVideoTasksPage() {
     },
   });
 
-  const tasks = taskPageQuery.data?.list ?? [];
+  const tasks = taskPageQuery.data?.records ?? [];
 
   const metrics = useMemo(() => {
     const successCount = tasks.filter((item) => item.videoUrl).length;

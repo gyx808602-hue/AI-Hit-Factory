@@ -8,21 +8,18 @@ export type AudioModalMode = "create" | "edit";
 export type AudioFormValues = {
   name: string;
   url: string;
-  modelType: string;
-  language: string;
-  text: string;
+  modelType?: string;
+  language?: string;
+  text?: string;
 };
 
 export type AudioFormErrors = Partial<Record<keyof AudioFormValues, string>>;
 
-// 音色表单模型靠近 audio feature，页面只负责提交时调用映射结果。
+// 音色创建只暴露名称和上传后的音频 URL，编辑态继续保留历史字段回填能力。
 export function createDefaultAudioFormValues(): AudioFormValues {
   return {
     name: "",
     url: "",
-    modelType: "tts",
-    language: "cn",
-    text: "",
   };
 }
 
@@ -30,11 +27,11 @@ export function validateAudioFormValues(values: AudioFormValues): AudioFormError
   const errors: AudioFormErrors = {};
 
   if (!values.name.trim()) {
-    errors.name = "璇疯緭鍏ラ煶鑹插悕绉?";
+    errors.name = "请输入音色名称";
   }
 
   if (!values.url.trim()) {
-    errors.url = "璇疯緭鍏ラ煶棰戝湴鍧€";
+    errors.url = "请上传音频";
   }
 
   return errors;
@@ -43,12 +40,10 @@ export function validateAudioFormValues(values: AudioFormValues): AudioFormError
 export function mapAudioFormValuesToCreatePayload(
   values: AudioFormValues,
 ): CustomisedAudioCreateRequest {
+  // 创建接口只接收用户可见字段，避免隐藏默认值悄悄影响后端训练行为。
   return {
     name: values.name.trim(),
     url: values.url.trim(),
-    modelType: values.modelType,
-    language: values.language,
-    text: values.text.trim() || undefined,
   };
 }
 

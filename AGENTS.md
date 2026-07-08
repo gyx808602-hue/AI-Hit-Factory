@@ -176,3 +176,8 @@
 - 宽表格必须考虑横向滚动、列宽、分页和小屏可用性。
 - 上传类交互优先使用 Ant Design Upload/Upload.Dragger，并复用项目 API Client，不绕开统一 request 层。
 - 页面级布局优先复用 `PageShell`、`MetricCard`、`StatusPill` 等已稳定组件；发现重复结构后再有边界地补充 shared 组件。
+
+### 项目执行
+- 每次执行任务时，不要只查看openspec任务，优先根据现在代码的逻辑进行修改如果有不同需要询问我
+- 手动修改的以及不合符文档或者任务的代码每次识别到可以询问我并及时更新对于的文件和任务，避免回退我的更改
+ Spend time on thinking; you do not need to use the commentary channel to report progress to me.

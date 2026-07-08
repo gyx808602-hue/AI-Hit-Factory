@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, message } from "antd";
 import { Plus } from "lucide-react";
+import { uploadImage, uploadVideo } from "../../api/aigc/uploads";
 import {
   createDefaultDigitalHumanFormValues,
   mapDigitalHumanFormValuesToCreatePayload,
   type DigitalHumanFormErrors,
   type DigitalHumanFormValues,
+  type DigitalHumanUploadedMaterialType,
   validateDigitalHumanFormValues,
 } from "../../features/digital-human/form";
 import {
@@ -40,7 +42,7 @@ export function DigitalHumansPage() {
     createDefaultDigitalHumanFormValues(),
   );
   const [formErrors, setFormErrors] = useState<DigitalHumanFormErrors>({});
-  const [uploadPreviewUrl, setUploadPreviewUrl] = useState("");
+  const [materialUploading, setMaterialUploading] = useState(false);
 
   const pageQuery = useDigitalHumanPage({
     pageNum,
@@ -56,38 +58,68 @@ export function DigitalHumansPage() {
     setPageNum(1);
   }, [keyword, statusFilter]);
 
-  useEffect(() => {
-    if (!formValues.file) {
-      setUploadPreviewUrl((currentUrl) => {
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl);
-        }
-
-        return "";
-      });
-      return;
-    }
-
-    const nextPreviewUrl = URL.createObjectURL(formValues.file);
-    setUploadPreviewUrl((currentUrl) => {
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl);
-      }
-
-      return nextPreviewUrl;
-    });
-
-    return () => {
-      URL.revokeObjectURL(nextPreviewUrl);
-    };
-  }, [formValues.file]);
-
   const humans = pageQuery.data?.list ?? [];
   const total = pageQuery.data?.total ?? 0;
 
   const metrics = useMemo(() => {
     return buildDigitalHumanMetrics(humans, total);
   }, [humans, total]);
+
+  function resetCreateForm() {
+    setFormValues(createDefaultDigitalHumanFormValues());
+    setFormErrors({});
+    setMaterialUploading(false);
+  }
+
+  async function handleMaterialUpload(file: File) {
+    const materialType = getMaterialType(file);
+
+    if (!materialType) {
+      setFormErrors((current) => ({
+        ...current,
+        file: "仅支持上传图片或视频训练素材",
+      }));
+      message.error("仅支持上传图片或视频训练素材");
+      return;
+    }
+
+    setMaterialUploading(true);
+    setFormErrors((current) => ({ ...current, file: undefined }));
+
+    try {
+      const result = materialType === "image" ? await uploadImage(file) : await uploadVideo(file);
+      setFormValues((current) => ({
+        ...current,
+        materialMode: "upload",
+        file,
+        fileUrl: result.url,
+        uploadedMaterialName: result.originalFilename || file.name,
+        uploadedMaterialType: materialType,
+      }));
+      message.success("训练素材上传成功");
+    } catch (error) {
+      handleRemoveMaterial();
+      setFormErrors((current) => ({
+        ...current,
+        file: (error as Error).message || "训练素材上传失败，请重新上传",
+      }));
+      message.error((error as Error).message || "训练素材上传失败");
+    } finally {
+      setMaterialUploading(false);
+    }
+  }
+
+  function handleRemoveMaterial() {
+    // 只清空当前表单引用，不删除远端素材对象，避免误删已经上传的文件。
+    setFormValues((current) => ({
+      ...current,
+      file: null,
+      fileUrl: "",
+      uploadedMaterialName: "",
+      uploadedMaterialType: null,
+    }));
+    setFormErrors((current) => ({ ...current, file: undefined }));
+  }
 
   async function handleCreate() {
     const nextErrors = validateDigitalHumanFormValues(formValues);
@@ -103,9 +135,7 @@ export function DigitalHumansPage() {
       );
       message.success("数字人创建成功");
       setCreateOpen(false);
-      setFormValues(createDefaultDigitalHumanFormValues());
-      setFormErrors({});
-      setUploadPreviewUrl("");
+      resetCreateForm();
       navigate(`/digital-humans/${created.id}`);
     } catch (error) {
       message.error((error as Error).message || "数字人创建失败");
@@ -130,9 +160,7 @@ export function DigitalHumansPage() {
           icon={<Plus size={14} />}
           onClick={() => {
             setCreateOpen(true);
-            setFormValues(createDefaultDigitalHumanFormValues());
-            setFormErrors({});
-            setUploadPreviewUrl("");
+            resetCreateForm();
           }}
         >
           新建数字人
@@ -154,7 +182,7 @@ export function DigitalHumansPage() {
         total={total}
         currentPage={pageQuery.data?.pageNum ?? pageNum}
         pageSize={pageQuery.data?.pageSize ?? pageSize}
-        onViewDetail={(human) => navigate('/digital-humans/' + human.id)}
+        onViewDetail={(human) => navigate(`/digital-humans/${human.id}`)}
         onRefresh={(human) => refreshMutation.mutate(human.id)}
         onDelete={(human) => handleDelete(human.id)}
         onPageChange={(nextPage, nextPageSize) => {
@@ -168,11 +196,10 @@ export function DigitalHumansPage() {
         values={formValues}
         errors={formErrors}
         submitting={createMutation.isPending}
+        materialUploading={materialUploading}
         onCancel={() => {
           setCreateOpen(false);
-          setFormValues(createDefaultDigitalHumanFormValues());
-          setFormErrors({});
-          setUploadPreviewUrl('');
+          resetCreateForm();
         }}
         onChange={(nextValues) => {
           setFormValues(nextValues);
@@ -180,9 +207,22 @@ export function DigitalHumansPage() {
             setFormErrors(validateDigitalHumanFormValues(nextValues));
           }
         }}
+        onMaterialUpload={(file) => void handleMaterialUpload(file)}
+        onRemoveMaterial={handleRemoveMaterial}
         onSubmit={() => void handleCreate()}
-        uploadPreviewUrl={uploadPreviewUrl}
       />
     </PageShell>
   );
+}
+
+function getMaterialType(file: File): DigitalHumanUploadedMaterialType | null {
+  if (file.type.startsWith("image/")) {
+    return "image";
+  }
+
+  if (file.type.startsWith("video/")) {
+    return "video";
+  }
+
+  return null;
 }

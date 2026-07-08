@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, message } from "antd";
 import { Plus } from "lucide-react";
 import type { CustomisedAudio } from "../../api/aigc/customised-audios/types";
+import { uploadAudio } from "../../api/aigc/uploads";
 import { PageShell } from "../../shared/components/PageShell";
 import {
   AudioFormModal,
@@ -40,6 +41,8 @@ export function CustomisedAudiosPage() {
   const [modalMode, setModalMode] = useState<AudioModalMode>("create");
   const [formValues, setFormValues] = useState<AudioFormValues>(createDefaultAudioFormValues());
   const [formErrors, setFormErrors] = useState<AudioFormErrors>({});
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [uploadedAudioName, setUploadedAudioName] = useState<string | null>(null);
 
   const pageQuery = useCustomisedAudioPage({
     pageNum,
@@ -66,6 +69,8 @@ export function CustomisedAudiosPage() {
     setModalMode("create");
     setFormValues(createDefaultAudioFormValues());
     setFormErrors({});
+    setUploadedAudioName(null);
+    setAudioUploading(false);
     setModalOpen(true);
   }
 
@@ -73,12 +78,44 @@ export function CustomisedAudiosPage() {
     setModalMode("edit");
     setFormValues(createAudioFormValuesFromAudio(audio));
     setFormErrors({});
+    setUploadedAudioName(audio.name ? `${audio.name}.wav` : null);
+    setAudioUploading(false);
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setFormErrors({});
+    setAudioUploading(false);
+  }
+
+  async function handleAudioUpload(file: File) {
+    setAudioUploading(true);
+    setFormErrors((current) => ({ ...current, url: undefined }));
+
+    try {
+      const result = await uploadAudio(file);
+      setFormValues((current) => ({ ...current, url: result.url }));
+      setUploadedAudioName(result.originalFilename || file.name);
+      message.success("音频上传成功");
+    } catch (error) {
+      setFormValues((current) => ({ ...current, url: "" }));
+      setUploadedAudioName(null);
+      setFormErrors((current) => ({
+        ...current,
+        url: (error as Error).message || "音频上传失败，请重新上传",
+      }));
+      message.error((error as Error).message || "音频上传失败");
+    } finally {
+      setAudioUploading(false);
+    }
+  }
+
+  function handleRemoveAudio() {
+    // 这里只移除当前弹窗里的 URL 引用，不删除远端对象，避免误删已上传素材。
+    setFormValues((current) => ({ ...current, url: "" }));
+    setUploadedAudioName(null);
+    setFormErrors((current) => ({ ...current, url: undefined }));
   }
 
   async function handleSubmit() {
@@ -100,6 +137,7 @@ export function CustomisedAudiosPage() {
       setModalOpen(false);
       setFormValues(createDefaultAudioFormValues());
       setFormErrors({});
+      setUploadedAudioName(null);
     } catch (error) {
       message.error((error as Error).message || "音色创建失败");
     }
@@ -153,6 +191,8 @@ export function CustomisedAudiosPage() {
         values={formValues}
         errors={formErrors}
         submitting={modalMode === "create" ? createMutation.isPending : false}
+        audioUploading={audioUploading}
+        uploadedAudioName={uploadedAudioName}
         onCancel={closeModal}
         onChange={(nextValues) => {
           setFormValues(nextValues);
@@ -160,6 +200,8 @@ export function CustomisedAudiosPage() {
             setFormErrors(validateAudioFormValues(nextValues));
           }
         }}
+        onAudioUpload={(file) => void handleAudioUpload(file)}
+        onRemoveAudio={handleRemoveAudio}
         onSubmit={() => void handleSubmit()}
       />
     </PageShell>

@@ -236,7 +236,7 @@ describe("LoginPage", () => {
   it("stores temporary tokens when C10001 response includes token data", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
-      msg: "璇峰厛淇敼鍒濆瀵嗙爜",
+      msg: "请先修改初始密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",

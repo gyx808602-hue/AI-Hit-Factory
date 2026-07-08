@@ -1,14 +1,14 @@
-import { Button, Empty, Input, Modal, Pagination, Radio, Select, Switch } from "antd";
-import { ListTodo, RefreshCw, Search, Trash2, User2 } from "lucide-react";
+import { Button, Empty, Input, Modal, Pagination, Radio, Select, Switch, Upload } from "antd";
+import { ListTodo, RefreshCw, Search, Trash2, UploadCloud, User2 } from "lucide-react";
 import type { DigitalPerson } from "../../api/aigc/digital-persons/types";
 import { MetricCard } from "../../shared/components/MetricCard";
 import { StatusPill } from "../../shared/components/StatusPill";
-import type { DigitalHumanFormErrors, DigitalHumanFormValues } from "./form";
+import type {
+  DigitalHumanFormErrors,
+  DigitalHumanFormValues,
+  DigitalHumanUploadedMaterialType,
+} from "./form";
 import { getDigitalHumanStatusMeta } from "./status";
-
-// 本文件承接数字人列表页中稳定的领域 UI：创建弹窗、指标卡、筛选区和列表区。
-// 页面层继续负责路由跳转、React Query 调用、分页/筛选状态和删除等流程编排。
-// 这些组件依赖数字人字段、状态文案和业务动作，暂不提升到 shared。
 
 export type DigitalHumanStatusFilterValue = "all" | "0" | "1" | "2" | "3" | "4";
 
@@ -17,22 +17,6 @@ export interface DigitalHumanMetrics {
   successCount: number;
   processingCount: number;
   failedCount: number;
-}
-
-export function getLocalUploadPreviewKind(file: File | null) {
-  if (!file) {
-    return null;
-  }
-
-  if (file.type.startsWith("image/")) {
-    return "image" as const;
-  }
-
-  if (file.type.startsWith("video/")) {
-    return "video" as const;
-  }
-
-  return null;
 }
 
 function countByState<T>(items: T[], predicate: (item: T) => boolean) {
@@ -44,14 +28,8 @@ export function buildDigitalHumanMetrics(
   total: number,
 ): DigitalHumanMetrics {
   const successCount = countByState(humans, (item) => Boolean(item.previewVideoUrl));
-  const processingCount = countByState(
-    humans,
-    (item) => getDigitalHumanStatusMeta(item).resultState === "processing",
-  );
-  const failedCount = countByState(
-    humans,
-    (item) => getDigitalHumanStatusMeta(item).resultState === "failed",
-  );
+  const processingCount = countByState(humans, (item) => getDigitalHumanStatusMeta(item).resultState === "processing");
+  const failedCount = countByState(humans, (item) => getDigitalHumanStatusMeta(item).resultState === "failed");
 
   return {
     total,
@@ -66,22 +44,24 @@ export function DigitalHumanCreateModal({
   values,
   errors,
   submitting,
+  materialUploading = false,
   onCancel,
   onChange,
+  onMaterialUpload,
+  onRemoveMaterial,
   onSubmit,
-  uploadPreviewUrl,
 }: {
   open: boolean;
   values: DigitalHumanFormValues;
   errors: DigitalHumanFormErrors;
   submitting: boolean;
+  materialUploading?: boolean;
   onCancel: () => void;
   onChange: (nextValues: DigitalHumanFormValues) => void;
+  onMaterialUpload?: (file: File) => Promise<void> | void;
+  onRemoveMaterial?: () => void;
   onSubmit: () => void;
-  uploadPreviewUrl: string;
 }) {
-  const previewKind = getLocalUploadPreviewKind(values.file);
-
   return (
     <Modal
       title="新建数字人"
@@ -95,34 +75,28 @@ export function DigitalHumanCreateModal({
     >
       <div className="space-y-4 pt-2">
         <div>
-          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-            数字人名称
-          </div>
+          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">数字人名称</div>
           <Input
             placeholder="请输入数字人名称"
             value={values.name}
             status={errors.name ? "error" : ""}
-            onChange={(event) =>
-              onChange({ ...values, name: event.target.value })
-            }
+            onChange={(event) => onChange({ ...values, name: event.target.value })}
           />
-          {errors.name ? (
-            <div className="mt-1 text-[12px] text-[#EF4444]">
-              {errors.name}
-            </div>
-          ) : null}
+          {errors.name ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.name}</div> : null}
         </div>
 
         <div>
-          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-            训练素材
-          </div>
+          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">训练素材</div>
           <Radio.Group
             value={values.materialMode}
             onChange={(event) =>
               onChange({
                 ...values,
                 materialMode: event.target.value,
+                file: null,
+                fileUrl: "",
+                uploadedMaterialName: "",
+                uploadedMaterialType: null,
               })
             }
           >
@@ -133,57 +107,51 @@ export function DigitalHumanCreateModal({
 
         {values.materialMode === "upload" ? (
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              本地训练素材
-            </div>
-            <input
-              data-testid="digital-human-upload-input"
-              type="file"
-              accept="image/*,video/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                onChange({
-                  ...values,
-                  file,
-                  fileUrl: "",
-                });
-              }}
-            />
-            {values.file ? (
-              <div className="mt-2 text-[12px] text-[var(--text-secondary)]">
-                {values.file.name}
-              </div>
-            ) : null}
-            {uploadPreviewUrl && previewKind === "image" ? (
-              <div className="mt-3 overflow-hidden rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-2">
-                <img
-                  alt="本地上传图片预览"
-                  src={uploadPreviewUrl}
-                  className="max-h-56 w-full rounded-lg object-contain"
-                />
-              </div>
-            ) : null}
-            {uploadPreviewUrl && previewKind === "video" ? (
-              <div className="mt-3 overflow-hidden rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-2">
-                <video
-                  data-testid="digital-human-upload-video-preview"
-                  src={uploadPreviewUrl}
-                  controls
-                  className="max-h-56 w-full rounded-lg"
-                />
-              </div>
-            ) : null}
-            {errors.file ? (
-              <div className="mt-1 text-[12px] text-[#EF4444]">
-                {errors.file}
-              </div>
-            ) : null}
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">本地训练素材</div>
+            {values.fileUrl ? (
+              <UploadedMaterialPreview
+                name={values.uploadedMaterialName}
+                url={values.fileUrl}
+                type={values.uploadedMaterialType}
+                onRemove={onRemoveMaterial}
+              />
+            ) : (
+              <Upload.Dragger
+                accept="image/*,video/*"
+                multiple={false}
+                showUploadList={false}
+                disabled={materialUploading}
+                beforeUpload={(file) => {
+                  void onMaterialUpload?.(file as File);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <div className="py-5">
+                  <UploadCloud size={28} className="mx-auto mb-2 text-[#1677FF]" />
+                  <input
+                    data-testid="digital-human-upload-input"
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        void onMaterialUpload?.(file);
+                      }
+                    }}
+                  />
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    {materialUploading ? "训练素材上传中..." : "点击或拖拽上传图片/视频"}
+                  </p>
+                  <p className="text-[12px] text-[var(--text-muted)]">上传成功后会显示图片或视频结果</p>
+                </div>
+              </Upload.Dragger>
+            )}
+            {errors.file ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.file}</div> : null}
           </div>
         ) : (
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              素材 URL
-            </div>
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">素材 URL</div>
             <Input
               placeholder="请输入训练素材 URL"
               value={values.fileUrl}
@@ -193,22 +161,18 @@ export function DigitalHumanCreateModal({
                   ...values,
                   fileUrl: event.target.value,
                   file: null,
+                  uploadedMaterialName: "",
+                  uploadedMaterialType: null,
                 })
               }
             />
-            {errors.fileUrl ? (
-              <div className="mt-1 text-[12px] text-[#EF4444]">
-                {errors.fileUrl}
-              </div>
-            ) : null}
+            {errors.fileUrl ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.fileUrl}</div> : null}
           </div>
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              训练类型
-            </div>
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">训练类型</div>
             <Select
               className="w-full"
               value={values.trainType}
@@ -221,9 +185,7 @@ export function DigitalHumanCreateModal({
             />
           </div>
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              语种
-            </div>
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">语种</div>
             <Select
               className="w-full"
               value={values.language}
@@ -238,20 +200,45 @@ export function DigitalHumanCreateModal({
 
         <div className="flex items-center justify-between rounded-lg border border-[var(--line-subtle)] px-3 py-2">
           <div>
-            <div className="text-[13px] text-[var(--text-primary)]">
-              跳过错误片段
-            </div>
-            <div className="text-[12px] text-[var(--text-muted)]">
-              训练时自动跳过异常片段
-            </div>
+            <div className="text-[13px] text-[var(--text-primary)]">跳过错误片段</div>
+            <div className="text-[12px] text-[var(--text-muted)]">训练时自动跳过异常片段</div>
           </div>
-          <Switch
-            checked={values.errorSkip}
-            onChange={(checked) => onChange({ ...values, errorSkip: checked })}
-          />
+          <Switch checked={values.errorSkip} onChange={(checked) => onChange({ ...values, errorSkip: checked })} />
         </div>
       </div>
     </Modal>
+  );
+}
+
+function UploadedMaterialPreview({
+  name,
+  url,
+  type,
+  onRemove,
+}: {
+  name: string;
+  url: string;
+  type: DigitalHumanUploadedMaterialType | null;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-[13px] text-[var(--text-primary)]">{name || "已上传训练素材"}</div>
+          <div className="text-[12px] text-[var(--text-muted)]">已上传到素材服务</div>
+        </div>
+        <Button size="small" danger icon={<Trash2 size={12} />} onClick={onRemove}>
+          删除训练素材
+        </Button>
+      </div>
+      {type === "image" ? (
+        <img alt="本地训练素材图片预览" src={url} className="max-h-56 w-full rounded-lg object-contain" />
+      ) : null}
+      {type === "video" ? (
+        <video data-testid="digital-human-upload-video-preview" src={url} controls className="max-h-56 w-full rounded-lg" />
+      ) : null}
+    </div>
   );
 }
 
@@ -292,10 +279,7 @@ export function DigitalHumanFilters({
         onChange={(event) => onKeywordChange(event.target.value)}
       />
 
-      <Radio.Group
-        value={statusFilter}
-        onChange={(event) => onStatusFilterChange(event.target.value)}
-      >
+      <Radio.Group value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value)}>
         <Radio.Button value="all">全部</Radio.Button>
         <Radio.Button value="0">排队中</Radio.Button>
         <Radio.Button value="1">训练中</Radio.Button>
@@ -328,11 +312,7 @@ export function DigitalHumanListSection({
   onPageChange: (page: number, pageSize: number) => void;
 }) {
   if (loading) {
-    return (
-      <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
-        数字人列表加载中...
-      </div>
-    );
+    return <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">数字人列表加载中...</div>;
   }
 
   if (humans.length === 0) {
@@ -346,32 +326,19 @@ export function DigitalHumanListSection({
           const statusMeta = getDigitalHumanStatusMeta(human);
 
           return (
-            <div
-              key={human.id}
-              className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-5"
-            >
+            <div key={human.id} className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-[16px] font-semibold text-[var(--text-primary)]">
-                    {human.name}
-                  </div>
-                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">
-                    进度 {human.progress ?? 0}%
-                  </div>
+                  <div className="truncate text-[16px] font-semibold text-[var(--text-primary)]">{human.name}</div>
+                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">进度 {human.progress ?? 0}%</div>
                 </div>
-                <StatusPill
-                  label={statusMeta.label}
-                  color={statusMeta.color}
-                  background={statusMeta.background}
-                />
+                <StatusPill label={statusMeta.label} color={statusMeta.color} background={statusMeta.background} />
               </div>
 
               <div className="mb-4 space-y-2 text-[12px] text-[var(--text-secondary)]">
                 <div className="flex justify-between gap-3">
                   <span className="text-[var(--text-muted)]">尺寸</span>
-                  <span>
-                    {human.width && human.height ? `${human.width} x ${human.height}` : "-"}
-                  </span>
+                  <span>{human.width && human.height ? `${human.width} x ${human.height}` : "-"}</span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-[var(--text-muted)]">4K 支持</span>
@@ -380,11 +347,7 @@ export function DigitalHumanListSection({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="small"
-                  aria-label={`查看详情-${human.id}`}
-                  onClick={() => onViewDetail(human)}
-                >
+                <Button size="small" aria-label={`查看详情-${human.id}`} onClick={() => onViewDetail(human)}>
                   查看详情
                 </Button>
                 <Button
@@ -411,13 +374,7 @@ export function DigitalHumanListSection({
       </div>
 
       <div className="flex justify-end">
-        <Pagination
-          current={currentPage}
-          pageSize={pageSize}
-          total={total}
-          onChange={onPageChange}
-          showSizeChanger
-        />
+        <Pagination current={currentPage} pageSize={pageSize} total={total} onChange={onPageChange} showSizeChanger />
       </div>
     </div>
   );

@@ -220,7 +220,7 @@ export function VideoRemixTasksPage() {
                 setKeyword(event.target.value)
               }}
             />
-            <Select
+            {/* <Select
               allowClear
               className="min-w-[160px]"
               placeholder="按状态筛选"
@@ -230,7 +230,7 @@ export function VideoRemixTasksPage() {
                 setPageNum(1)
                 setStatus(value)
               }}
-            />
+            /> */}
           </div>
           <Button
             icon={<RefreshCw size={14} />}

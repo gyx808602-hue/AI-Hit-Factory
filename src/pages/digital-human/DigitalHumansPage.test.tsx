@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ const pageMocks = vi.hoisted(() => ({
   useCreateDigitalHumanMutation: vi.fn(),
   useDeleteDigitalHumanMutation: vi.fn(),
   useRefreshDigitalHumanMutation: vi.fn(),
+  uploadImage: vi.fn(),
+  uploadVideo: vi.fn(),
   navigate: vi.fn(),
   messageSuccess: vi.fn(),
   messageError: vi.fn(),
@@ -19,6 +21,11 @@ vi.mock("../../features/digital-human/hooks", () => ({
   useCreateDigitalHumanMutation: pageMocks.useCreateDigitalHumanMutation,
   useDeleteDigitalHumanMutation: pageMocks.useDeleteDigitalHumanMutation,
   useRefreshDigitalHumanMutation: pageMocks.useRefreshDigitalHumanMutation,
+}));
+
+vi.mock("../../api/aigc/uploads", () => ({
+  uploadImage: pageMocks.uploadImage,
+  uploadVideo: pageMocks.uploadVideo,
 }));
 
 vi.mock("antd", async () => {
@@ -60,14 +67,14 @@ function renderDigitalHumansPage() {
 }
 
 function openCreateModal() {
-  fireEvent.click(screen.getByRole("button", { name: "新建数字人" }));
+  fireEvent.click(screen.getAllByRole("button")[0]);
   return screen.getByRole("dialog");
 }
 
 function clickPrimaryModalButton() {
   const submitButton = document.querySelector(".ant-modal-footer .ant-btn-primary");
   if (!(submitButton instanceof HTMLButtonElement)) {
-    throw new Error("未找到弹窗确认按钮");
+    throw new Error("Modal primary button not found");
   }
 
   fireEvent.click(submitButton);
@@ -133,6 +140,17 @@ describe("DigitalHumansPage", () => {
       mutate: vi.fn(),
       isPending: false,
     });
+
+    pageMocks.uploadImage.mockResolvedValue({
+      url: "https://example.com/uploaded-poster.png",
+      objectKey: "image/uploaded-poster.png",
+      originalFilename: "poster.png",
+    });
+    pageMocks.uploadVideo.mockResolvedValue({
+      url: "https://example.com/uploaded-train.mp4",
+      objectKey: "video/uploaded-train.mp4",
+      originalFilename: "train.mp4",
+    });
   });
 
   it("queries digital humans with search params", async () => {
@@ -182,6 +200,7 @@ describe("DigitalHumansPage", () => {
         files: [new File(["video"], "train.mp4", { type: "video/mp4" })],
       },
     });
+    expect(await screen.findByText("train.mp4")).toBeInTheDocument();
 
     clickPrimaryModalButton();
 
@@ -192,7 +211,7 @@ describe("DigitalHumansPage", () => {
           trainType: "both",
           language: "cn",
           errorSkip: false,
-          file: expect.any(File),
+          fileUrl: "https://example.com/uploaded-train.mp4",
         }),
       );
     });
@@ -237,7 +256,7 @@ describe("DigitalHumansPage", () => {
     });
   });
 
-  it("previews an uploaded image file in the create modal", async () => {
+  it("uploads and previews an image material result in the create modal", async () => {
     renderDigitalHumansPage();
     openCreateModal();
 
@@ -247,13 +266,15 @@ describe("DigitalHumansPage", () => {
       },
     });
 
-    expect(await screen.findByAltText("本地上传图片预览")).toHaveAttribute(
+    expect(pageMocks.uploadImage).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("poster.png")).toBeInTheDocument();
+    expect(await screen.findByAltText("本地训练素材图片预览")).toHaveAttribute(
       "src",
-      "blob:poster.png",
+      "https://example.com/uploaded-poster.png",
     );
   });
 
-  it("previews an uploaded video file in the create modal", async () => {
+  it("uploads and previews a video material result in the create modal", async () => {
     renderDigitalHumansPage();
     openCreateModal();
 
@@ -263,8 +284,40 @@ describe("DigitalHumansPage", () => {
       },
     });
 
+    expect(pageMocks.uploadVideo).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("train.mp4")).toBeInTheDocument();
     const preview = await screen.findByTestId("digital-human-upload-video-preview");
-    expect(preview).toHaveAttribute("src", "blob:train.mp4");
+    expect(preview).toHaveAttribute("src", "https://example.com/uploaded-train.mp4");
+  });
+
+  it("clears uploaded material and blocks stale url submission after delete", async () => {
+    const createMutation = {
+      mutateAsync: vi.fn(),
+      isPending: false,
+    };
+    pageMocks.useCreateDigitalHumanMutation.mockReturnValue(createMutation);
+
+    renderDigitalHumansPage();
+
+    const dialog = openCreateModal();
+    fireEvent.change(within(dialog).getAllByRole("textbox")[0], {
+      target: { value: "New Human" },
+    });
+    fireEvent.change(screen.getByTestId("digital-human-upload-input"), {
+      target: {
+        files: [new File(["image"], "poster.png", { type: "image/png" })],
+      },
+    });
+
+    expect(await screen.findByText("poster.png")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "删除训练素材" }));
+    expect(screen.queryByAltText("本地训练素材图片预览")).not.toBeInTheDocument();
+
+    clickPrimaryModalButton();
+
+    expect(createMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(await screen.findByText("请上传训练素材")).toBeInTheDocument();
   });
 
   it("refreshes status, navigates to detail and deletes a digital human", async () => {
@@ -349,3 +402,4 @@ describe("DigitalHumansPage", () => {
     expect(screen.queryByText("Human One")).not.toBeInTheDocument();
   });
 });
+

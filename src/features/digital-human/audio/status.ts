@@ -26,7 +26,7 @@ export function getCustomisedAudioStatusMeta(
 ): CustomisedAudioStatusMeta {
   if (audio.status === 2) {
     return {
-      label: audio.statusLabel ?? "宸插畬鎴?",
+      label: audio.statusLabel ?? "已完成",
       color: "#166534",
       background: "#DCFCE7",
       icon: CheckCircle2,
@@ -36,7 +36,7 @@ export function getCustomisedAudioStatusMeta(
 
   if (audio.status === 3) {
     return {
-      label: audio.statusLabel ?? "澶辫触",
+      label: audio.statusLabel ?? "失败",
       color: "#B91C1C",
       background: "#FEE2E2",
       icon: AlertCircle,
@@ -46,7 +46,7 @@ export function getCustomisedAudioStatusMeta(
 
   if (audio.status === 1) {
     return {
-      label: audio.statusLabel ?? "璁粌涓?",
+      label: audio.statusLabel ?? "训练中",
       color: "#C2410C",
       background: "#FFEDD5",
       icon: RefreshCw,
@@ -55,7 +55,7 @@ export function getCustomisedAudioStatusMeta(
   }
 
   return {
-    label: audio.statusLabel ?? "鎺掗槦涓?",
+    label: audio.statusLabel ?? "排队中",
     color: "#475569",
     background: "#E2E8F0",
     icon: Clock3,

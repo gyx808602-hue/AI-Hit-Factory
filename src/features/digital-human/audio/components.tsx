@@ -1,4 +1,4 @@
-import { Button, Empty, Input, Modal, Pagination, Radio, Select } from "antd";
+import { Button, Empty, Input, Modal, Pagination, Radio, Upload } from "antd";
 import {
   AlertCircle,
   CheckCircle2,
@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  UploadCloud,
 } from "lucide-react";
 import type { CustomisedAudio } from "../../../api/aigc/customised-audios/types";
 import { MetricCard } from "../../../shared/components/MetricCard";
@@ -18,10 +19,6 @@ import type {
 } from "./form";
 import { getCustomisedAudioStatusMeta } from "./status";
 
-// 本文件承接音色管理页中稳定的领域 UI：音色表单弹窗、指标卡、筛选区和列表区。
-// 页面层继续负责接口 hooks、分页状态、弹窗开关、创建/刷新/删除 mutation 等流程。
-// 这些组件依赖音色领域字段、状态映射和业务文案，因此先保留在 digital-human/audio feature 内。
-
 export type CustomisedAudioStatusFilterValue = "all" | "0" | "1" | "2" | "3";
 
 export interface CustomisedAudioMetrics {
@@ -31,7 +28,6 @@ export interface CustomisedAudioMetrics {
   failedCount: number;
 }
 
-// 列表指标和卡片展示属于音色领域 UI，避免页面直接混杂状态派生和卡片结构。
 function countByState<T>(items: T[], predicate: (item: T) => boolean) {
   return items.filter(predicate).length;
 }
@@ -67,8 +63,12 @@ export function AudioFormModal({
   values,
   errors,
   submitting,
+  audioUploading = false,
+  uploadedAudioName,
   onCancel,
   onChange,
+  onAudioUpload,
+  onRemoveAudio,
   onSubmit,
 }: {
   open: boolean;
@@ -76,107 +76,108 @@ export function AudioFormModal({
   values: AudioFormValues;
   errors: AudioFormErrors;
   submitting: boolean;
+  audioUploading?: boolean;
+  uploadedAudioName?: string | null;
   onCancel: () => void;
   onChange: (nextValues: AudioFormValues) => void;
+  onAudioUpload?: (file: File) => Promise<void> | void;
+  onRemoveAudio?: () => void;
   onSubmit: () => void;
 }) {
+  const isCreateMode = mode === "create";
+
   return (
     <Modal
-      title={mode === "create" ? "新建音色" : "编辑音色"}
+      title={isCreateMode ? "新建音色" : "编辑音色"}
       open={open}
       onCancel={onCancel}
       onOk={onSubmit}
       confirmLoading={submitting}
-      okText={mode === "create" ? "提交创建" : "关闭弹窗"}
+      okText={isCreateMode ? "提交创建" : "关闭弹窗"}
       cancelText="取消"
       destroyOnHidden
     >
       <div className="space-y-4 pt-2">
         <div>
-          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-            闊宠壊鍚嶇О
-          </div>
+          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音色名称</div>
           <Input
-            placeholder="璇疯緭鍏ラ煶鑹插悕绉?"
+            placeholder="请输入音色名称"
             value={values.name}
             status={errors.name ? "error" : ""}
-            onChange={(event) =>
-              onChange({ ...values, name: event.target.value })
-            }
+            onChange={(event) => onChange({ ...values, name: event.target.value })}
           />
-          {errors.name ? (
-            <div className="mt-1 text-[12px] text-[#EF4444]">
-              {errors.name}
-            </div>
-          ) : null}
+          {errors.name ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.name}</div> : null}
         </div>
 
-        <div>
-          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-            闊抽鍦板潃
-          </div>
-          <Input
-            placeholder="璇疯緭鍏ラ煶棰戝湴鍧€"
-            value={values.url}
-            status={errors.url ? "error" : ""}
-            onChange={(event) =>
-              onChange({ ...values, url: event.target.value })
-            }
-          />
-          {errors.url ? (
-            <div className="mt-1 text-[12px] text-[#EF4444]">
-              {errors.url}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
+        {isCreateMode ? (
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              妯″瀷绫诲瀷
-            </div>
-            <Select
-              className="w-full"
-              value={values.modelType}
-              options={[{ value: "tts", label: "TTS" }]}
-              onChange={(value) => onChange({ ...values, modelType: value })}
-            />
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音频文件</div>
+            {values.url ? (
+              <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] text-[var(--text-primary)]">
+                      {uploadedAudioName || "已上传音频"}
+                    </div>
+                    <div className="text-[12px] text-[var(--text-muted)]">已上传到素材服务</div>
+                  </div>
+                  <Button size="small" danger icon={<Trash2 size={12} />} onClick={onRemoveAudio}>
+                    删除音频
+                  </Button>
+                </div>
+                <audio className="w-full" controls src={values.url} data-testid="customised-audio-preview">
+                  当前浏览器不支持音频预览
+                </audio>
+              </div>
+            ) : (
+              <Upload.Dragger
+                accept="audio/*"
+                multiple={false}
+                showUploadList={false}
+                disabled={audioUploading}
+                beforeUpload={(file) => {
+                  void onAudioUpload?.(file as File);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <div className="py-5">
+                  <UploadCloud size={28} className="mx-auto mb-2 text-[#1677FF]" />
+                  <input
+                    data-testid="customised-audio-upload-input"
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        void onAudioUpload?.(file);
+                      }
+                    }}
+                  />
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    {audioUploading ? "音频上传中..." : "点击或拖拽上传音频"}
+                  </p>
+                  <p className="text-[12px] text-[var(--text-muted)]">上传成功后会自动写入音频地址</p>
+                </div>
+              </Upload.Dragger>
+            )}
+            {errors.url ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.url}</div> : null}
           </div>
+        ) : (
           <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-              璇
-            </div>
-            <Select
-              className="w-full"
-              value={values.language}
-              options={[
-                { value: "cn", label: "涓枃" },
-                { value: "en", label: "鑻辨枃" },
-              ]}
-              onChange={(value) => onChange({ ...values, language: value })}
+            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音频地址</div>
+            <Input
+              placeholder="请输入音频地址"
+              value={values.url}
+              status={errors.url ? "error" : ""}
+              onChange={(event) => onChange({ ...values, url: event.target.value })}
             />
+            {errors.url ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.url}</div> : null}
+            <div className="mt-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] px-3 py-2 text-[12px] text-[var(--text-muted)]">
+              当前先提供编辑弹窗与数据回填，后续接入更新接口后可直接复用此表单。
+            </div>
           </div>
-        </div>
-
-        <div>
-          <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
-            璇曞惉鏂囨
-          </div>
-          <Input.TextArea
-            placeholder="璇疯緭鍏ヨ瘯鍚枃妗?"
-            value={values.text}
-            rows={4}
-            onChange={(event) =>
-              onChange({ ...values, text: event.target.value })
-            }
-          />
-        </div>
-
-        {mode === "edit" ? (
-          <div className="rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] px-3 py-2 text-[12px] text-[var(--text-muted)]">
-            褰撳墠鍏堟彁渚涚紪杈戝脊绐椾笌鏁版嵁鍥炲～锛屽悗缁帴鍏ユ洿鏂版帴鍙ｅ悗鍙洿鎺ュ鐢ㄦ琛ㄥ崟銆?
-          </div>
-        ) : null}
+        )}
       </div>
     </Modal>
   );
@@ -189,30 +190,10 @@ export function CustomisedAudioMetricsGrid({
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-4">
-      <MetricCard
-        label="闊宠壊鎬绘暟"
-        value={metrics.total}
-        color="#94A3B8"
-        icon={Mic2}
-      />
-      <MetricCard
-        label="澶勭悊涓?"
-        value={metrics.processingCount}
-        color="#F97316"
-        icon={RefreshCw}
-      />
-      <MetricCard
-        label="宸插畬鎴?"
-        value={metrics.successCount}
-        color="#4ADE80"
-        icon={CheckCircle2}
-      />
-      <MetricCard
-        label="澶辫触鏁?"
-        value={metrics.failedCount}
-        color="#EF4444"
-        icon={AlertCircle}
-      />
+      <MetricCard label="音色总数" value={metrics.total} color="#94A3B8" icon={Mic2} />
+      <MetricCard label="处理中" value={metrics.processingCount} color="#F97316" icon={RefreshCw} />
+      <MetricCard label="已完成" value={metrics.successCount} color="#4ADE80" icon={CheckCircle2} />
+      <MetricCard label="失败数" value={metrics.failedCount} color="#EF4444" icon={AlertCircle} />
     </div>
   );
 }
@@ -239,15 +220,12 @@ export function CustomisedAudioFilters({
         onChange={(event) => onKeywordChange(event.target.value)}
       />
 
-      <Radio.Group
-        value={statusFilter}
-        onChange={(event) => onStatusFilterChange(event.target.value)}
-      >
-        <Radio.Button value="all">鍏ㄩ儴</Radio.Button>
-        <Radio.Button value="0">鎺掗槦涓?</Radio.Button>
-        <Radio.Button value="1">璁粌涓?</Radio.Button>
-        <Radio.Button value="2">宸插畬鎴?</Radio.Button>
-        <Radio.Button value="3">澶辫触</Radio.Button>
+      <Radio.Group value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value)}>
+        <Radio.Button value="all">全部</Radio.Button>
+        <Radio.Button value="0">排队中</Radio.Button>
+        <Radio.Button value="1">训练中</Radio.Button>
+        <Radio.Button value="2">已完成</Radio.Button>
+        <Radio.Button value="3">失败</Radio.Button>
       </Radio.Group>
     </div>
   );
@@ -275,15 +253,11 @@ export function CustomisedAudioListSection({
   onPageChange: (page: number, pageSize: number) => void;
 }) {
   if (loading) {
-    return (
-      <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">
-        闊宠壊鍒楄〃鍔犺浇涓?..
-      </div>
-    );
+    return <div className="py-10 text-center text-[13px] text-[var(--text-muted)]">音色列表加载中...</div>;
   }
 
   if (audios.length === 0) {
-    return <Empty description="鏆傛棤闊宠壊鏁版嵁" />;
+    return <Empty description="暂无音色数据" />;
   }
 
   return (
@@ -293,18 +267,11 @@ export function CustomisedAudioListSection({
           const statusMeta = getCustomisedAudioStatusMeta(audio);
 
           return (
-            <div
-              key={audio.id}
-              className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-5"
-            >
+            <div key={audio.id} className="rounded-xl border border-[var(--line-subtle)] bg-[var(--card-bg)] p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-[16px] font-semibold text-[var(--text-primary)]">
-                    {audio.name}
-                  </div>
-                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">
-                    杩涘害 {audio.progress ?? 0}%
-                  </div>
+                  <div className="truncate text-[16px] font-semibold text-[var(--text-primary)]">{audio.name}</div>
+                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">进度 {audio.progress ?? 0}%</div>
                 </div>
                 <StatusPill
                   label={statusMeta.label}
@@ -316,23 +283,18 @@ export function CustomisedAudioListSection({
 
               <div className="mb-4 space-y-2 text-[12px] text-[var(--text-secondary)]">
                 <div className="flex justify-between gap-3">
-                  <span className="text-[var(--text-muted)]">妯″瀷</span>
+                  <span className="text-[var(--text-muted)]">模型</span>
                   <span>{audio.modelType || "-"}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-[var(--text-muted)]">璇</span>
+                  <span className="text-[var(--text-muted)]">语种</span>
                   <span>{audio.language || "-"}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="small"
-                  icon={<Pencil size={12} />}
-                  aria-label={`编辑音色-${audio.id}`}
-                  onClick={() => onEdit(audio)}
-                >
-                  缂栬緫
+                <Button size="small" icon={<Pencil size={12} />} aria-label={`编辑音色-${audio.id}`} onClick={() => onEdit(audio)}>
+                  编辑
                 </Button>
                 <Button
                   size="small"
@@ -340,7 +302,7 @@ export function CustomisedAudioListSection({
                   aria-label={`刷新音色-${audio.id}`}
                   onClick={() => onRefresh(audio)}
                 >
-                  鍒锋柊
+                  刷新
                 </Button>
                 <Button
                   size="small"
@@ -349,7 +311,7 @@ export function CustomisedAudioListSection({
                   aria-label={`删除音色-${audio.id}`}
                   onClick={() => onDelete(audio)}
                 >
-                  鍒犻櫎
+                  删除
                 </Button>
               </div>
             </div>
@@ -358,13 +320,7 @@ export function CustomisedAudioListSection({
       </div>
 
       <div className="flex justify-end">
-        <Pagination
-          current={currentPage}
-          pageSize={pageSize}
-          total={total}
-          onChange={onPageChange}
-          showSizeChanger
-        />
+        <Pagination current={currentPage} pageSize={pageSize} total={total} onChange={onPageChange} showSizeChanger />
       </div>
     </div>
   );

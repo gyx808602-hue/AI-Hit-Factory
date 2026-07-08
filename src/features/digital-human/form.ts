@@ -5,12 +5,15 @@ import type {
 } from "../../api/aigc/digital-persons/types";
 
 export type DigitalHumanMaterialMode = "upload" | "url";
+export type DigitalHumanUploadedMaterialType = "image" | "video";
 
 export interface DigitalHumanFormValues {
   name: string;
   materialMode: DigitalHumanMaterialMode;
   file: File | null;
   fileUrl: string;
+  uploadedMaterialName: string;
+  uploadedMaterialType: DigitalHumanUploadedMaterialType | null;
   trainType: DigitalPersonTrainType;
   language: DigitalPersonLanguage;
   errorSkip: boolean;
@@ -28,6 +31,8 @@ export function createDefaultDigitalHumanFormValues(): DigitalHumanFormValues {
     materialMode: "upload",
     file: null,
     fileUrl: "",
+    uploadedMaterialName: "",
+    uploadedMaterialType: null,
     trainType: "both",
     language: "cn",
     errorSkip: false,
@@ -44,7 +49,7 @@ export function validateDigitalHumanFormValues(
   }
 
   if (values.materialMode === "upload") {
-    if (!values.file) {
+    if (!values.fileUrl.trim()) {
       errors.file = "请上传训练素材";
     }
   } else if (!values.fileUrl.trim()) {
@@ -64,13 +69,7 @@ export function mapDigitalHumanFormValuesToCreatePayload(
     errorSkip: values.errorSkip,
   };
 
-  if (values.materialMode === "upload") {
-    if (values.file) {
-      payload.file = values.file;
-    }
-    return payload;
-  }
-
+  // 数字人创建只提交上传后的稳定 URL，避免弹窗删除后仍带着旧 File 进入创建请求。
   payload.fileUrl = values.fileUrl.trim();
   return payload;
 }

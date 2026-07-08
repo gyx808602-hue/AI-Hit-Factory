@@ -73,7 +73,5 @@ export function createDigitalPerson(
     });
   }
 
-  return client.post<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}`, undefined, {
-    params,
-  });
+  return client.post<DigitalPerson>(`${DIGITAL_PERSONS_BASE_URL}`, params);
 }
