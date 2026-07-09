@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./LoginPage";
@@ -193,10 +193,10 @@ describe("LoginPage", () => {
     });
   });
 
-  it("opens a forced password change dialog when login returns C10001", async () => {
+  it("does not open local forced password dialog when login returns C10013", async () => {
     mockedLogin.mockRejectedValueOnce({
-      code: "C10001",
-      message: "请先修改初始密码",
+      code: "C10013",
+      message: "必须修改密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",
@@ -210,147 +210,11 @@ describe("LoginPage", () => {
     await submitLogin();
 
     await waitFor(() => {
-      expect(mockedLogin).toHaveBeenCalledWith({
-        phone: "15838237810",
-        password: "Init@123",
-        captchaId: "captcha-id",
-        captchaCode: "1234",
-      });
+      expect(mockedLogin).toHaveBeenCalled();
+      expect(mockedGetCaptcha).toHaveBeenCalledTimes(2);
     });
-
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent("首次登录重置密码");
-    expect(dialog).toHaveTextContent("请先修改初始密码");
-    expect(within(dialog).getByPlaceholderText("请输入旧密码")).toBeInTheDocument();
-    expect(within(dialog).getByPlaceholderText("请输入新密码")).toBeInTheDocument();
-    expect(within(dialog).getByPlaceholderText("请再次输入新密码")).toBeInTheDocument();
-    expect(mockedSetTokenPair).toHaveBeenCalledWith({
-      accessToken: "access-token",
-      refreshToken: "refresh-token",
-      tokenType: "Bearer",
-      expiresIn: 7200,
-    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockedSetTokenPair).not.toHaveBeenCalled();
     expect(mockedNavigate).not.toHaveBeenCalled();
-  });
-
-  it("stores temporary tokens when C10001 response includes token data", async () => {
-    mockedLogin.mockRejectedValueOnce({
-      code: "C10001",
-      message: "请先修改初始密码",
-      data: {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        tokenType: "Bearer",
-        expiresIn: 7200,
-      },
-    });
-
-    renderLoginPage();
-
-    await submitLogin();
-
-    await screen.findByRole("dialog");
-
-    expect(mockedSetTokenPair).toHaveBeenCalledWith({
-      accessToken: "access-token",
-      refreshToken: "refresh-token",
-      tokenType: "Bearer",
-      expiresIn: 7200,
-    });
-    expect(mockedNavigate).not.toHaveBeenCalled();
-  });
-
-  it("blocks forced password change submit when confirm password does not match", async () => {
-    mockedLogin.mockRejectedValueOnce({
-      code: "C10001",
-      message: "请先修改初始密码",
-      data: {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        tokenType: "Bearer",
-        expiresIn: 7200,
-      },
-    });
-
-    renderLoginPage();
-
-    await submitLogin();
-
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByPlaceholderText("请输入旧密码"), {
-      target: { value: "Init@123" },
-    });
-    fireEvent.change(within(dialog).getByPlaceholderText("请输入新密码"), {
-      target: { value: "NewPass@123" },
-    });
-    fireEvent.change(within(dialog).getByPlaceholderText("请再次输入新密码"), {
-      target: { value: "Different@123" },
-    });
-
-    fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
-
-    await waitFor(() => {
-      expect(screen.getByText("两次输入的新密码不一致")).toBeInTheDocument();
-    });
-    expect(mockedChangePassword).not.toHaveBeenCalled();
-  });
-
-  it("returns to the login form after changing the initial password", async () => {
-    mockedLogin.mockRejectedValueOnce({
-      code: "C10001",
-      message: "请先修改初始密码",
-      data: {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        tokenType: "Bearer",
-        expiresIn: 7200,
-      },
-    });
-    mockedChangePassword.mockResolvedValue(undefined);
-
-    renderLoginPage();
-
-    await submitLogin();
-
-    await waitFor(() => {
-      expect(mockedLogin).toHaveBeenCalledWith({
-        phone: "15838237810",
-        password: "Init@123",
-        captchaId: "captcha-id",
-        captchaCode: "1234",
-      });
-    });
-
-    const dialog = await screen.findByRole("dialog");
-
-    fireEvent.change(within(dialog).getByPlaceholderText("请输入旧密码"), {
-      target: { value: "Init@123" },
-    });
-    fireEvent.change(within(dialog).getByPlaceholderText("请输入新密码"), {
-      target: { value: "NewPass@123" },
-    });
-    fireEvent.change(within(dialog).getByPlaceholderText("请再次输入新密码"), {
-      target: { value: "NewPass@123" },
-    });
-
-    fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
-
-    await waitFor(() => {
-      expect(mockedChangePassword).toHaveBeenCalledWith({
-        oldPassword: "Init@123",
-        newPassword: "NewPass@123",
-        confirmPassword: "NewPass@123",
-      });
-    });
-
-    expect(mockedClear).toHaveBeenCalled();
-    expect(mockedMessageSuccess).toHaveBeenCalledWith("密码修改成功，请重新登录");
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /登录/ })).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
   });
 });

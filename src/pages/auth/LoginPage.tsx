@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, Form, Input, Modal, message } from "antd";
+import { Button, Checkbox, Form, Input } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import {
   BadgeCheck,
@@ -11,18 +11,16 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { changePassword, getCaptcha, login } from "../../api/system/auth";
+import { getCaptcha, login } from "../../api/system/auth";
 import type {
   AuthenticationToken,
   CaptchaInfo,
-  ChangePasswordRequest,
   LoginRequest,
 } from "../../api/system/auth/types";
 import { AuthStorage } from "../../utils/auth";
 
 const REMEMBER_ME_KEY = "ai_hit_factory_remember_me";
 const REMEMBERED_USERNAME_KEY = "ai_hit_factory_remembered_username";
-const INITIAL_PASSWORD_CHANGE_CODE = "C10001";
 
 type LoginFormValues = {
   username: string;
@@ -30,21 +28,6 @@ type LoginFormValues = {
   captchaKey?: string;
   captchaCode: string;
   rememberMe: boolean;
-};
-
-type ChangePasswordFormValues = ChangePasswordRequest;
-
-type PasswordResetContext = {
-  username: string;
-  tokens: AuthenticationToken;
-  message: string;
-};
-
-type InitialPasswordChangeErrorLike = {
-  code: string;
-  data: AuthenticationToken;
-  message?: string; 
-  msg?: string;
 };
 
 function getRememberMe() {
@@ -99,44 +82,14 @@ function buildFallbackCaptcha(): CaptchaInfo {
   };
 }
 
-function isInitialPasswordChangeError(
-  error: unknown,
-): error is InitialPasswordChangeErrorLike {
-  const maybeError = error as {
-    code?: string;
-    data?: Partial<AuthenticationToken>;
-  };
-
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    "data" in error &&
-    maybeError.code === INITIAL_PASSWORD_CHANGE_CODE &&
-    typeof maybeError.data?.accessToken === "string" &&
-    typeof maybeError.data?.refreshToken === "string"
-  );
-}
-
-function getInitialPasswordChangeMessage(error: InitialPasswordChangeErrorLike) {
-  return error.message || error.msg || "请先修改初始密码";
-}
-
-function hasPasswordResetToken(context: PasswordResetContext | null) {
-  return Boolean(context?.tokens.accessToken);
-}
-
 export function LoginPage() {
   const [loginForm] = Form.useForm<LoginFormValues>();
-  const [changePasswordForm] = Form.useForm<ChangePasswordFormValues>();
   const navigate = useNavigate();
   const location = useLocation();
   const [captcha, setCaptcha] = useState<CaptchaInfo>(() => buildFallbackCaptcha());
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [changePasswordSubmitting, setChangePasswordSubmitting] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [passwordResetContext, setPasswordResetContext] = useState<PasswordResetContext | null>(null);
 
   const redirectPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -165,7 +118,6 @@ export function LoginPage() {
     setCaptchaLoading(true);
     try {
       const nextCaptcha = await getCaptcha();
-      console.log("nextCaptcha", nextCaptcha);
       setCaptcha(nextCaptcha);
       loginForm.setFieldValue("captchaKey", getCaptchaKey(nextCaptcha));
     } catch {
@@ -191,50 +143,11 @@ export function LoginPage() {
       AuthStorage.setCurrentUserName(values.username);
       setRememberState(values.rememberMe, values.username);
       navigate(redirectPath, { replace: true });
-    } catch (error) {
-      if (isInitialPasswordChangeError(error)) {
-        AuthStorage.setTokenPair(error.data);
-        setPasswordResetContext({
-          username: values.username,
-          tokens: error.data,
-          message: getInitialPasswordChangeMessage(error),
-        });
-        changePasswordForm.setFieldsValue({
-          oldPassword: values.password,
-          newPassword: "",
-          confirmPassword: "",
-        });
-        return;
-      }
-
+    } catch {
       await refreshCaptcha();
     } finally {
       setSubmitting(false);
     }
-  }
-
-  async function handleChangePassword(values: ChangePasswordFormValues) {
-    setChangePasswordSubmitting(true);
-    try {
-      await changePassword(values);
-      AuthStorage.clear();
-      setPasswordResetContext(null);
-      changePasswordForm.resetFields();
-      loginForm.setFieldValue("password", "");
-      loginForm.setFieldValue("captchaCode", "");
-      message.success("密码修改成功，请重新登录");
-      await refreshCaptcha();
-    } finally {
-      setChangePasswordSubmitting(false);
-    }
-  }
-
-  function handlePasswordDialogCancel() {
-    AuthStorage.clear();
-    setPasswordResetContext(null);
-    changePasswordForm.resetFields();
-    loginForm.setFieldValue("password", "");
-    loginForm.setFieldValue("captchaCode", "");
   }
 
   function handleRememberChange(event: CheckboxChangeEvent) {
@@ -436,99 +349,6 @@ export function LoginPage() {
           </div>
         </section>
       </div>
-
-      <Modal
-        title="首次登录重置密码"
-        open={hasPasswordResetToken(passwordResetContext)}
-        mask={{ closable: false }}
-        keyboard={false}
-        footer={null}
-        destroyOnHidden
-        transitionName=""
-        maskTransitionName=""
-        onCancel={handlePasswordDialogCancel}
-      >
-        {passwordResetContext ? (
-          <>
-            <Alert
-              type="warning"
-              showIcon
-              title={passwordResetContext.message}
-              className="mb-5"
-            />
-            <p className="mb-4 text-[13px] text-[var(--text-muted)]">
-              账户 {passwordResetContext.username} 需要先完成初始密码重置。
-            </p>
-
-            <Form
-              form={changePasswordForm}
-              layout="vertical"
-              requiredMark={false}
-              onFinish={handleChangePassword}
-            >
-              <Form.Item
-                name="oldPassword"
-                rules={[{ required: true, message: "请输入旧密码" }]}
-              >
-                <Input.Password
-                  size="large"
-                  prefix={<LockKeyhole size={16} />}
-                  placeholder="请输入旧密码"
-                  autoComplete="current-password"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="newPassword"
-                rules={[
-                  { required: true, message: "请输入新密码" },
-                  { min: 6, message: "新密码不能少于 6 位" },
-                ]}
-              >
-                <Input.Password
-                  size="large"
-                  prefix={<LockKeyhole size={16} />}
-                  placeholder="请输入新密码"
-                  autoComplete="new-password"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="confirmPassword"
-                dependencies={["newPassword"]}
-                rules={[
-                  { required: true, message: "请再次输入新密码" },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue("newPassword") === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error("两次输入的新密码不一致"));
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password
-                  size="large"
-                  prefix={<LockKeyhole size={16} />}
-                  placeholder="请再次输入新密码"
-                  autoComplete="new-password"
-                />
-              </Form.Item>
-
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                loading={changePasswordSubmitting}
-                className="w-full"
-              >
-                确认重置密码
-              </Button>
-            </Form>
-          </>
-        ) : null}
-      </Modal>
     </div>
   );
 }

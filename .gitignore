@@ -2,6 +2,9 @@ node_modules
 dist
 *.tsbuildinfo
 vite-dev*.log
+tmp/
+tmp-*.log
+vitest.*-temp.config.ts
 .playwright-mcp/
 dist.zip
 .codex/skills/ui-ux-pro-max/data/_sync_all.py

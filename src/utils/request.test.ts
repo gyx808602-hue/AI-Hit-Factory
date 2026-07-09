@@ -154,10 +154,12 @@ describe("request client", () => {
     expect(notifyError).toHaveBeenCalledWith("后端返回的参数错误");
   });
 
-  it("does not notify or return the success message when business code is successful", async () => {
+  it("notifies success message without returning it when business code is successful", async () => {
     const notifyError = vi.fn();
+    const notifySuccess = vi.fn();
     const client = createRequestClient({
       notifyError,
+      notifySuccess,
       adapter: createAdapter((config) => ({
         config,
         data: { code: "0", data: { ok: true }, message: "操作成功" },
@@ -169,6 +171,7 @@ describe("request client", () => {
 
     await expect(client.get<{ ok: boolean }>("/success")).resolves.toEqual({ ok: true });
     expect(notifyError).not.toHaveBeenCalled();
+    expect(notifySuccess).toHaveBeenCalledWith("操作成功");
   });
 
   it("uses error-code document fallback message when backend omits message", async () => {
@@ -191,7 +194,7 @@ describe("request client", () => {
     expect(notifyError).toHaveBeenCalledWith("旧密码错误");
   });
 
-  it("uses configured auth code message for http error responses when backend omits message", async () => {
+  it("expires auth for C10040 http error responses when backend omits message", async () => {
     const notifyError = vi.fn();
     const onAuthExpired = vi.fn();
     const client = createRequestClient({
@@ -218,11 +221,52 @@ describe("request client", () => {
       },
     });
 
-    await expect(client.get("/secure")).rejects.toMatchObject({
-      code: "C10040",
-      message: "Token 无效或已过期",
+    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    expect(notifyError).not.toHaveBeenCalled();
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("expires auth for C10040 business responses even when http status is 200", async () => {
+    const notifyError = vi.fn();
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      notifyError,
+      onAuthExpired,
+      adapter: createAdapter((config) => ({
+        config,
+        data: { code: "C10040", data: null },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      })),
     });
-    expect(notifyError).toHaveBeenCalledWith("Token 无效或已过期");
+
+    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    expect(notifyError).not.toHaveBeenCalled();
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits password-change event for C10013 from http 403 without auth expiry", async () => {
+    const notifyError = vi.fn();
+    const notifyPasswordChangeRequired = vi.fn();
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      notifyError,
+      notifyPasswordChangeRequired,
+      onAuthExpired,
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+
+        throw createHttpError(requestConfig, { code: "C10013", data: null }, 403);
+      },
+    });
+
+    await expect(client.post("/auth/login")).rejects.toMatchObject({
+      code: "C10013",
+      message: "必须修改密码",
+    });
+    expect(notifyPasswordChangeRequired).toHaveBeenCalledWith("必须修改密码");
+    expect(notifyError).not.toHaveBeenCalled();
     expect(onAuthExpired).not.toHaveBeenCalled();
   });
 

@@ -8,36 +8,24 @@ import axios, {
 } from "axios";
 import qs from "qs";
 import { AuthStorage, redirectToLogin } from "./auth";
+import { createRefreshAccessToken } from "./requestAuthRefresh";
+import {
+  ApiCode,
+  getBusinessCode,
+  getBusinessMessage,
+  isAccessTokenExpiredCode,
+  isPasswordChangeRequiredCode,
+  isTokenInvalidOrExpiredCode,
+  isSuccessfulBusinessCode,
+} from "./requestCodes";
+import {
+  createDedupedNotify,
+  defaultNotifyError,
+  defaultNotifyPasswordChangeRequired,
+  defaultNotifySuccess,
+  type NotifyMessage,
+} from "./requestNotify";
 import type { ApiResult } from "../api/shared/types";
-import type { AuthenticationToken } from "../api/system/auth/types";
-
-export const ApiCode = {
-  success: "200",
-  successAlt: "00000",
-  successAll: "0",
-  accessTokenInvalid: "A0230",
-  refreshTokenInvalid: "A0231",
-  permissionDenied: "A0301",
-} as const;
-
-const businessCodeMessages: Record<string, string> = {
-  C10001: "请求参数错误",
-  C10002: "账号已停用",
-  C10003: "账号已锁定",
-  C10010: "旧密码错误",
-  C10011: "密码复杂度不足",
-  C10012: "确认密码不一致",
-  C10020: "手机号已被使用",
-  C10021: "账户不存在",
-  C10022: "无权限访问该资源",
-  C10030: "验证码错误",
-  C10040: "Token 无效或已过期",
-  A6011: "上传文件类型不合法",
-  A6012: "上传文件大小超出限制",
-  C6011: "上传到对象存储失败",
-};
-
-type NotifyError = (message: string) => void;
 
 export class RequestBusinessError<TData = unknown> extends Error {
   code: string;
@@ -61,7 +49,9 @@ export interface RequestClientOptions {
   baseURL?: string;
   getAccessToken?: () => string | null;
   getRefreshToken?: () => string | null;
-  notifyError?: NotifyError;
+  notifyError?: NotifyMessage;
+  notifyPasswordChangeRequired?: NotifyMessage;
+  notifySuccess?: NotifyMessage;
   onAuthExpired?: (message?: string) => void | Promise<void>;
   setTokenPair?: (tokens: { accessToken?: string; refreshToken?: string }) => void;
 }
@@ -78,51 +68,9 @@ export type DataRequestClient = Omit<
 };
 
 const retriedConfigs = new WeakSet<InternalAxiosRequestConfig>();
-const ERROR_DEDUPE_WINDOW = 1500;
-
-function createDedupedNotifyError(notifyError: NotifyError): NotifyError {
-  let lastError: { message: string; time: number } | null = null;
-
-  return (message: string) => {
-    const now = Date.now();
-
-    if (lastError && lastError.message === message && now - lastError.time < ERROR_DEDUPE_WINDOW) {
-      return;
-    }
-
-    lastError = { message, time: now };
-    notifyError(message);
-  };
-}
-
-function defaultNotifyError(message: string) {
-  // 统一派发请求错误事件，避免请求层直接依赖具体 UI 组件。
-  window.dispatchEvent(new CustomEvent("request:error", { detail: { message } }));
-  console.error(message);
-}
 
 function isBinaryResponse(response: AxiosResponse) {
   return response.config.responseType === "blob" || response.config.responseType === "arraybuffer";
-}
-
-function isSuccessfulBusinessCode(code: string) {
-  return code === ApiCode.success || code === ApiCode.successAlt || code === ApiCode.successAll;
-}
-
-function isAccessTokenExpiredCode(code: string) {
-  return code === ApiCode.accessTokenInvalid;
-}
-
-function getBusinessCode(data: unknown) {
-  return typeof data === "object" && data !== null && "code" in data
-    ? String((data as ApiResult).code)
-    : "";
-}
-
-function getBusinessMessage(data: ApiResult | undefined, fallback: string) {
-  const code = getBusinessCode(data);
-  // 新后端错误契约使用 message；msg 仅作为旧接口兼容字段。
-  return data?.message || data?.msg || businessCodeMessages[code] || fallback;
 }
 
 function shouldNotifyError(config?: AxiosRequestConfig) {
@@ -133,13 +81,24 @@ function isFormDataPayload(data: unknown): data is FormData {
   return typeof FormData !== "undefined" && data instanceof FormData;
 }
 
+function resolveNotify(
+  customNotify: NotifyMessage | undefined,
+  defaultNotify: NotifyMessage,
+) {
+  return createDedupedNotify(customNotify ?? defaultNotify);
+}
+
 export function createRequestClient(options: RequestClientOptions = {}): DataRequestClient {
-  const notifyError = createDedupedNotifyError(options.notifyError ?? defaultNotifyError);
+  const notifyError = resolveNotify(options.notifyError, defaultNotifyError);
+  const notifyPasswordChangeRequired = resolveNotify(
+    options.notifyPasswordChangeRequired,
+    defaultNotifyPasswordChangeRequired,
+  );
+  const notifySuccess = resolveNotify(options.notifySuccess, defaultNotifySuccess);
   const getAccessToken = options.getAccessToken ?? AuthStorage.getAccessToken;
   const getRefreshToken = options.getRefreshToken ?? AuthStorage.getRefreshToken;
   const onAuthExpired = options.onAuthExpired ?? redirectToLogin;
   const setTokenPair = options.setTokenPair ?? AuthStorage.setTokenPair.bind(AuthStorage);
-  let refreshTokenPromise: Promise<AuthenticationToken> | null = null;
 
   const client = axios.create({
     adapter: options.adapter,
@@ -150,35 +109,11 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
     timeout: 50000,
   });
 
-  function refreshAccessToken() {
-    const refreshToken = getRefreshToken();
-
-    if (!refreshToken) {
-      return Promise.reject(new Error("Token Invalid"));
-    }
-
-    if (!refreshTokenPromise) {
-      refreshTokenPromise = (client as DataRequestClient)
-        .post<AuthenticationToken>(
-          "/auth/refresh",
-          { refreshToken },
-          {
-            headers: { Authorization: "no-auth" },
-            silentError: true,
-            skipAuthRefresh: true,
-          },
-        )
-        .then((tokens) => {
-          setTokenPair(tokens);
-          return tokens;
-        })
-        .finally(() => {
-          refreshTokenPromise = null;
-        });
-    }
-
-    return refreshTokenPromise;
-  }
+  const refreshAccessToken = createRefreshAccessToken({
+    client,
+    getRefreshToken,
+    setTokenPair,
+  });
 
   client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
@@ -203,7 +138,7 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
   });
 
   client.interceptors.response.use(
-    ((response: AxiosResponse<ApiResult>): unknown => {
+    (async (response: AxiosResponse<ApiResult>): Promise<unknown> => {
       if (isBinaryResponse(response)) {
         return response.data;
       }
@@ -211,13 +146,28 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       // 统一解包后端 Result，业务成功时仅向页面暴露 data。
       const code = getBusinessCode(response.data);
       if (isSuccessfulBusinessCode(code)) {
+        const successMessage = response.data.message?.trim();
+        if (successMessage) {
+          notifySuccess(successMessage);
+        }
         return response.data.data;
       }
 
       const message = getBusinessMessage(response.data, "系统出错");
+      if (isPasswordChangeRequiredCode(code)) {
+        notifyPasswordChangeRequired(message);
+        return Promise.reject(
+          new RequestBusinessError(code, message, response.data?.data),
+        );
+      }
+
+      if (isTokenInvalidOrExpiredCode(code)) {
+        await onAuthExpired(message);
+        return Promise.reject(new Error("Token Invalid"));
+      }
+
       if (shouldNotifyError(response.config)) {
         notifyError(message);
-        
       }
       return Promise.reject(
         new RequestBusinessError(code, message, response.data?.data),
@@ -236,7 +186,21 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       const code = getBusinessCode(response.data);
       const message = getBusinessMessage(response.data, "请求失败");
 
+      if (isTokenInvalidOrExpiredCode(code)) {
+        await onAuthExpired(message);
+        return Promise.reject(
+          new Error("Token Invalid"),
+        );
+      }
+
       if ((config as RequestConfig | undefined)?.skipAuthRefresh) {
+        return Promise.reject(
+          new RequestBusinessError(code, message, response.data?.data),
+        );
+      }
+
+      if (isPasswordChangeRequiredCode(code)) {
+        notifyPasswordChangeRequired(message);
         return Promise.reject(
           new RequestBusinessError(code, message, response.data?.data),
         );

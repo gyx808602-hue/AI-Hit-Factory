@@ -1,8 +1,9 @@
-import { ConfigProvider, message, Spin } from "antd";
+import { Alert, Button, ConfigProvider, Form, Input, message, Modal, Spin } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { matchRoutes, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { logout } from "../api/system/auth";
+import { changePassword, logout } from "../api/system/auth";
+import type { ChangePasswordRequest } from "../api/system/auth/types";
 import { ForbiddenPage } from "../pages/system/ForbiddenPage";
 import { NotFoundPage } from "../pages/system/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
@@ -147,11 +148,18 @@ function WorkspaceOutlet({
   );
 }
 
+type PasswordChangeFormValues = ChangePasswordRequest;
+
 export function App() {
+  const [passwordChangeForm] = Form.useForm<PasswordChangeFormValues>();
   const antdThemeConfig = useAppSelector(selectAntdThemeConfig);
   const location = useLocation();
   const navigate = useNavigate();
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState("必须修改密码");
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+  const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false);
   const lastRequestErrorRef = useRef<{ message: string; time: number } | null>(null);
+  const lastRequestSuccessRef = useRef<{ message: string; time: number } | null>(null);
   const hasAccessToken = Boolean(AuthStorage.getAccessToken());
   const bypassTokenCheck = isTokenBypassEnabled();
   const publicRoutes = useMemo(
@@ -220,6 +228,63 @@ export function App() {
     window.addEventListener("request:error", handleRequestError as EventListener);
     return () => {
       window.removeEventListener("request:error", handleRequestError as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handlePasswordChangeRequired(event: Event) {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      setPasswordChangeMessage(detail?.message?.trim() || "必须修改密码");
+      setPasswordChangeRequired(true);
+    }
+
+    window.addEventListener(
+      "auth:password-change-required",
+      handlePasswordChangeRequired as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "auth:password-change-required",
+        handlePasswordChangeRequired as EventListener,
+      );
+    };
+  }, []);
+
+  async function handleRequiredPasswordChange(values: PasswordChangeFormValues) {
+    setPasswordChangeSubmitting(true);
+    try {
+      await changePassword(values);
+      passwordChangeForm.resetFields();
+      setPasswordChangeRequired(false);
+      void message.success("密码修改成功，请重新登录");
+    } finally {
+      setPasswordChangeSubmitting(false);
+    }
+  }
+
+  useEffect(() => {
+    function handleRequestSuccess(event: Event) {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      const nextMessage = detail?.message?.trim();
+      if (!nextMessage) {
+        return;
+      }
+
+      const now = Date.now();
+      const lastSuccess = lastRequestSuccessRef.current;
+
+      // 成功提示也做短时间去重，避免并发成功响应导致重复弹窗。
+      if (lastSuccess && lastSuccess.message === nextMessage && now - lastSuccess.time < 1500) {
+        return;
+      }
+
+      lastRequestSuccessRef.current = { message: nextMessage, time: now };
+      void message.success(nextMessage);
+    }
+
+    window.addEventListener("request:success", handleRequestSuccess as EventListener);
+    return () => {
+      window.removeEventListener("request:success", handleRequestSuccess as EventListener);
     };
   }, []);
 
@@ -326,6 +391,89 @@ export function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
+      <Modal
+        title="修改密码"
+        open={passwordChangeRequired}
+        closable={false}
+        mask={{ closable: false }}
+        keyboard={false}
+        footer={null}
+        destroyOnHidden
+        transitionName=""
+        maskTransitionName=""
+      >
+        <Alert
+          type="warning"
+          showIcon
+          title={passwordChangeMessage}
+          className="mb-5"
+        />
+        <Form
+          form={passwordChangeForm}
+          layout="vertical"
+          requiredMark={false}
+          onFinish={(values) => {
+            void handleRequiredPasswordChange(values);
+          }}
+        >
+          <Form.Item
+            name="oldPassword"
+            rules={[{ required: true, message: "请输入旧密码" }]}
+          >
+            <Input.Password
+              size="large"
+              placeholder="请输入旧密码"
+              autoComplete="current-password"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="newPassword"
+            rules={[
+              { required: true, message: "请输入新密码" },
+              { min: 6, message: "新密码不能少于 6 位" },
+            ]}
+          >
+            <Input.Password
+              size="large"
+              placeholder="请输入新密码"
+              autoComplete="new-password"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "请再次输入新密码" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("newPassword") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("两次输入的新密码不一致"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              size="large"
+              placeholder="请再次输入新密码"
+              autoComplete="new-password"
+            />
+          </Form.Item>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            loading={passwordChangeSubmitting}
+            className="w-full"
+          >
+            确认修改密码
+          </Button>
+        </Form>
+      </Modal>
     </ConfigProvider>
   );
 }

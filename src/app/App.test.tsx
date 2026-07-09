@@ -13,6 +13,7 @@ const menuApiMock = vi.hoisted(() => ({
 }));
 
 const authApiMock = vi.hoisted(() => ({
+  changePassword: vi.fn(),
   logout: vi.fn(),
 }));
 
@@ -30,6 +31,7 @@ vi.mock("../api/system/auth", async () => {
 
   return {
     ...actual,
+    changePassword: authApiMock.changePassword,
     logout: authApiMock.logout,
   };
 });
@@ -56,14 +58,23 @@ function renderApp(initialEntries: string[]) {
 
 describe("App auth routing", () => {
   let messageErrorSpy: ReturnType<typeof vi.spyOn>;
+  let messageSuccessSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     window.localStorage.clear();
     menuApiMock.getCurrentUserRoutes.mockReset();
     authApiMock.logout.mockReset();
+    authApiMock.changePassword.mockReset();
     authApiMock.logout.mockResolvedValue(undefined);
+    authApiMock.changePassword.mockResolvedValue(undefined);
     vi.unstubAllEnvs();
     messageErrorSpy = vi.spyOn(message, "error").mockImplementation(() => ({
+      then: async (callback?: () => void) => {
+        callback?.();
+      },
+      promise: Promise.resolve(),
+    }) as never);
+    messageSuccessSpy = vi.spyOn(message, "success").mockImplementation(() => ({
       then: async (callback?: () => void) => {
         callback?.();
       },
@@ -73,6 +84,7 @@ describe("App auth routing", () => {
 
   afterEach(() => {
     messageErrorSpy.mockRestore();
+    messageSuccessSpy.mockRestore();
   });
 
   it("renders the workspace shell for unauthenticated users when menu routes are disabled", async () => {
@@ -228,10 +240,10 @@ describe("App auth routing", () => {
     vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
     AuthStorage.setAccessToken("access-token");
 
-    renderApp(["/assets"]);
+    renderApp(["/image-video"]);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/素材库/i).length).toBeGreaterThan(0);
+      expect(screen.getByTestId("image-video-prompt-section")).toBeInTheDocument();
     });
 
     redirectToLogin();
@@ -257,6 +269,69 @@ describe("App auth routing", () => {
 
     await waitFor(() => {
       expect(message.error).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("shows global request success messages and suppresses duplicate messages", async () => {
+    vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
+
+    renderApp(["/login"]);
+
+    await waitFor(() => {
+      expect(screen.getByText("AI 爆款工厂")).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(new CustomEvent("request:success", { detail: { message: "操作成功" } }));
+    window.dispatchEvent(new CustomEvent("request:success", { detail: { message: "操作成功" } }));
+
+    await waitFor(() => {
+      expect(message.success).toHaveBeenCalledTimes(1);
+      expect(message.success).toHaveBeenCalledWith("操作成功");
+    });
+  });
+
+  it("shows a required password change modal after C10013 and submits the new password", async () => {
+    vi.stubEnv("VITE_ENABLE_MENU_ROUTES", "false");
+
+    renderApp(["/login"]);
+
+    await waitFor(() => {
+      expect(screen.getByText("AI 爆款工厂")).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(
+      new CustomEvent("auth:password-change-required", {
+        detail: { message: "必须修改密码" },
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("必须修改密码");
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+
+    const passwordInputs = dialog.querySelectorAll('input[type="password"]');
+    fireEvent.change(passwordInputs[0] as HTMLInputElement, {
+      target: { value: "OldPass@123" },
+    });
+    fireEvent.change(passwordInputs[1] as HTMLInputElement, {
+      target: { value: "NewPass@123" },
+    });
+    fireEvent.change(passwordInputs[2] as HTMLInputElement, {
+      target: { value: "NewPass@123" },
+    });
+    fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(authApiMock.changePassword).toHaveBeenCalledWith({
+        oldPassword: "OldPass@123",
+        newPassword: "NewPass@123",
+        confirmPassword: "NewPass@123",
+      });
+    });
+    expect(message.success).toHaveBeenCalledWith("密码修改成功，请重新登录");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 

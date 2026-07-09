@@ -2941,3 +2941,182 @@
 - 已执行定向请求层测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，18 个用例全部通过。
 - 已执行请求层 + 登录页回归：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，2 个测试文件、26 个用例全部通过。
 - 测试过程中出现 npm 全局配置提示与 jsdom 伪元素 `getComputedStyle` 提示，均为既有测试环境提示，不影响本次用例通过。
+
+---
+
+## 2026-07-09 请求错误码兜底表复核
+
+### 已完成
+
+- 已根据用户提供的错误码兜底表复核 `src/utils/request.ts` 中的 `businessCodeMessages`。
+- 当前代码已包含并保持以下映射：`C10001`、`C10002`、`C10003`、`C10010`、`C10011`、`C10012`、`C10020`、`C10021`、`C10022`、`C10030`、`C10040`、`A6011`、`A6012`、`C6011`。
+- 本轮未修改业务代码，因为当前实现已经与用户提供内容一致。
+
+### 当前判断
+
+- 请求层兜底文案已与错误码文档保持一致。
+- 接口失败时仍优先使用后端返回的 `message`，错误码文案只作为兜底处理，符合前一轮约定。
+
+### 下一步
+
+1. 后续如果错误码文档新增更多 code，再同步追加到 `businessCodeMessages`。
+2. 新增错误码时同步补充 `src/utils/request.test.ts` 的兜底提示用例，避免后续被旧映射覆盖。
+
+### 验证结果
+
+- 已通过代码读取复核：`src/utils/request.ts` 当前映射与用户提供表一致。
+- 本轮没有代码变更，因此未重新运行测试。
+
+---
+
+## 2026-07-09 成功响应 message 全局提示
+
+### 已完成
+
+- 已按用户新要求调整成功响应处理：接口业务成功时仍只向调用方返回 `data`，但如果响应体存在 `message`，会额外触发全局成功提示。
+- 已更新 `src/utils/request.ts`：
+  - 新增 `notifySuccess` 配置入口，测试或特殊场景可注入成功提示处理器。
+  - 默认通过 `request:success` 事件派发成功提示，不让请求层直接依赖 Ant Design。
+  - 成功提示只读取新契约字段 `message`，不会把旧 `msg` 的 `success` 文案当作成功 toast，避免历史接口批量刷成功提示。
+  - 成功提示与错误提示一样做 1500ms 相同文案去重。
+- 已更新 `src/app/App.tsx`：监听 `request:success` 事件，并使用 Ant Design `message.success` 展示内容。
+- 已更新测试：
+  - `src/utils/request.test.ts`：成功响应带 `message` 时会触发 `notifySuccess`，但返回值仍是 `data`。
+  - `src/app/App.test.tsx`：新增全局成功提示展示与去重用例。
+
+### 当前判断
+
+- 现在的行为边界是：成功返回 `data` 给业务代码，`message` 只用于提示，不进入业务返回值。
+- 失败链路不变，仍按 `message -> msg -> 错误码兜底文案 -> 默认文案` 处理。
+- 只对成功响应的 `message` 弹成功提示，不对旧 `msg` 弹成功提示，是为了避免兼容旧接口时大量 `msg: "success"` 被误展示。
+
+### 下一步
+
+1. 如果后端确认所有成功响应都统一使用有意义的中文 `message`，可保持当前策略。
+2. 如果部分接口成功 message 不希望弹出，需要再扩展请求配置，例如 `silentSuccess?: boolean`。
+3. 可后续单独整理 `App.test.tsx` 中既有路由断言失败问题，避免影响整文件回归。
+
+### 验证结果
+
+- 已执行红灯测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/app/App.test.tsx`，其中新增请求层成功提示用例按预期失败；`App.test.tsx` 同时存在既有路由 404 断言失败。
+- 已执行请求层定向测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，18 个用例全部通过。
+- 已执行登录页回归：`cmd /c npm test -- --config vite.request-test.config.ts src/pages/auth/LoginPage.test.tsx`，8 个用例全部通过。
+- 已执行新增 App 成功提示用例：`cmd /c npm test -- --config vite.request-test.config.ts src/app/App.test.tsx -t "shows global request success messages"`，1 个用例通过，14 个用例按筛选跳过。
+- 测试过程中出现 npm 全局配置提示与 jsdom 伪元素 `getComputedStyle` 提示，均为既有测试环境提示，不影响本次相关用例通过。
+
+---
+
+## 2026-07-09 axios 二次封装结构简化
+
+### 已完成
+
+- 已在保持调用方式和行为不变的前提下拆分 `src/utils/request.ts`：
+  - `src/utils/requestCodes.ts`：集中管理 `ApiCode`、错误码兜底文案、业务 code/message 解析、成功码与 token 过期码判断。
+  - `src/utils/requestNotify.ts`：集中管理成功/失败提示事件派发与 1500ms 相同文案去重。
+  - `src/utils/requestAuthRefresh.ts`：集中管理 refresh token 请求、共享 refresh Promise、token 写回。
+  - `src/utils/request.ts`：保留 axios 实例创建、请求拦截器、响应拦截器主流程。
+- 已移除 `request.ts` 中遗留的调试输出 `console.log("response.data.data", ...)`。
+- 已避免 `requestAuthRefresh.ts` 从 `request.ts` 反向导入类型，降低循环依赖和认知负担。
+
+### 当前判断
+
+- 这次属于结构重构，不改变页面和 API Client 的调用方式，仍然从 `src/utils/request.ts` 默认导入 request，类型也仍从该文件导出。
+- 请求层现在职责更清楚：
+  - `request.ts` 管主流程。
+  - `requestCodes.ts` 管业务码。
+  - `requestNotify.ts` 管提示。
+  - `requestAuthRefresh.ts` 管刷新 token。
+- 上传 API 定向测试中发现旧测试期望 `/api/aigc/uploads/*`，当前实现发送 `/uploads/*`；该失败与本次 axios 封装拆分无关，本轮未扩大范围修改上传接口路径。
+
+### 下一步
+
+1. 如果要继续简化，可以把响应成功/失败处理再抽为 `handleBusinessResponse` 和 `handleHttpError`，但当前拆分已经能显著降低 `request.ts` 复杂度。
+2. 可另起任务确认上传接口路径到底应是 `/uploads/*` 还是 `/api/aigc/uploads/*`，再同步 API Client 与测试。
+3. 可后续为 `requestCodes.ts` 单独补单元测试，锁住错误码兜底文案。
+
+### 验证结果
+
+- 拆分前已执行基线：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，18 个用例通过。
+- 拆分后已执行：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，2 个测试文件、26 个用例全部通过。
+- 已执行：`cmd /c npm run typecheck`，通过。
+- 已执行新增 App 成功提示定向用例：`cmd /c npm test -- --config vite.request-test.config.ts src/app/App.test.tsx -t "shows global request success messages"`，1 个用例通过，14 个用例按筛选跳过。
+- 曾尝试执行 `src/api/aigc/uploads/index.test.ts`，2 个用例失败，失败原因为上传接口路径期望不一致：测试期望 `/api/aigc/uploads/*`，当前实现为 `/uploads/*`，与本次 request 结构拆分无关。
+
+---
+
+## 2026-07-09 request notify 可读性优化
+
+### 已完成
+
+- 已优化 `src/utils/request.ts` 中成功/失败提示函数解析逻辑。
+- 新增局部函数 `resolveNotify(customNotify, defaultNotify)`，替代原先的 `createDedupedNotify(options.xxx ?? defaultXxx)` 嵌套表达式。
+- 主流程现在更清晰表达为：先解析提示函数，再统一加去重能力。
+
+### 当前判断
+
+- 本次只做可读性优化，不改变成功/失败提示行为。
+- `resolveNotify` 保留了原有依赖注入能力：测试或特殊场景仍可传入自定义 notify，默认场景仍使用全局事件通知。
+
+### 下一步
+
+1. 如果继续做导师向可读性优化，可以把 `getAccessToken/getRefreshToken/onAuthExpired/setTokenPair` 也整理成 `resolveAuthDependencies(options)`。
+2. 当前改动范围已经很小，暂不继续拆，避免为了简化而过度抽象。
+
+### 验证结果
+
+- 已执行：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，18 个用例全部通过。
+- 已执行：`cmd /c npm run typecheck`，通过。
+
+---
+
+## 2026-07-09 C10013 强制改密错误码同步
+
+### 已完成
+
+- 已按后端新契约同步强制改密错误码：`C10013` 表示“必须修改密码”，后端拦截器可返回 HTTP 403。
+- 已更新 `src/utils/requestCodes.ts`：新增 `C10013: "必须修改密码"` 兜底文案。
+- 已更新 `src/pages/auth/LoginPage.tsx`：首次/强制改密弹窗判断从旧 `C10001` 切换为 `C10013`。
+- 已更新 `src/utils/request.test.ts`：新增 HTTP 403 + `C10013` 回归用例，确认它会作为普通业务错误抛出，不触发 `onAuthExpired`。
+- 已更新 `src/pages/auth/LoginPage.test.tsx`：登录强制改密 mock 从 `C10001` 切换为 `C10013`。
+- 已移除登录页遗留调试输出：`console.log("nextCaptcha", ...)` 和登录 catch 中的 `console.error(error)`。
+
+### 当前判断
+
+- `C10013` 现在专门表示“必须修改密码”，不会再和参数错误 `C10001` 混淆。
+- `C10040` 继续表示 token 无效或过期；只有 token 失效相关分支才会触发登录过期流程。
+- HTTP 403 本身不会决定是否跳登录，前端仍以业务 code 为准：`C10013` 进入改密弹窗，`C10040` 才走 token 失效语义。
+
+### 下一步
+
+1. 若后端以后不再返回改密临时 token，需要重新设计前端改密接口鉴权方式。
+2. 若后端确认 `C10001` 不再承载初始改密语义，可逐步清理旧文档中的相关描述。
+
+### 验证结果
+
+- 已执行红灯测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，旧实现下 `C10013` 相关用例按预期失败。
+- 已执行：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，2 个测试文件、27 个用例全部通过。
+- 已执行：`cmd /c npm run typecheck`，通过。
+- 测试环境仍输出 npm 全局配置提示与 jsdom 伪元素 `getComputedStyle` 提示，属于既有环境提示，不影响本次验证结果。
+
+## 2026-07-09 C10013/C10040 登录态与强制改密语义修正
+
+### 已完成
+- 已按最新后端契约修正错误码语义：`C10013` 表示登录后受保护接口触发“必须修改密码”，不再由登录页本地弹窗处理。
+- 已在 `src/utils/request.ts` 中将 `C10013` 分流为专用 `auth:password-change-required` 事件，不触发普通错误提示，也不触发 token 失效回登录。
+- 已在 `src/app/App.tsx` 中增加全局不可关闭修改密码弹窗，监听 `auth:password-change-required` 后弹出，提交后调用 `changePassword`。
+- 已明确 `C10040` 表示 Token 无效或已过期：无论 HTTP 200 业务失败还是 HTTP 错误响应，只要业务 `code` 是 `C10040`，都触发 `onAuthExpired`，清理登录态并返回登录页。
+- 已保留旧 `A0230` 的 refresh token 重试逻辑，避免影响旧接口的自动续期路径。
+- 已修复本次触碰测试文件中暴露出的历史中文乱码断言，并去除误写入的 BOM。
+
+### 当前判断
+- `C10013` 与 `C10040` 现在职责分离：前者只负责强制修改密码，后者只负责会话失效回登录页。
+- 登录页不再持有强制改密临时 token、弹窗、改密表单等逻辑，避免和登录成功后的全局接口拦截流程混淆。
+- axios 层继续优先使用后端返回的 `message` 作为提示内容；错误码文档文案仅作为兜底。
+
+### 验证结果
+- 已通过：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，结果 2 个测试文件、25 条用例通过。
+- 已通过：`cmd /c npm test -- --config vite.request-test.config.ts src/app/App.test.tsx -t "redirects to login after auth expired event|shows a required password change modal|shows global request success messages"`，结果 1 个测试文件、3 条相关用例通过。
+- 已通过：`cmd /c npm run typecheck`。
+
+### 遗留说明
+- 完整执行 `src/app/App.test.tsx` 时，仍有若干旧用例因为 `/assets` 当前渲染 404 而失败；该问题与本次 `C10013/C10040` 错误码链路无直接关系，后续可单独整理 App fallback 路由测试。
