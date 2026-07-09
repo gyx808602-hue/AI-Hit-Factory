@@ -12,8 +12,11 @@ import type {
 const VIDEO_REMIX_TASKS_BASE_URL = "/video-remix-tasks";
 
 function toPageData(data: VideoRemixTaskPageResponse): VideoRemixTaskPageData {
+  const records = Array.isArray(data.records) ? data.records : [];
+
   return {
-    list: Array.isArray(data.records) ? data.records : [],
+    list: records,
+    records,
     total: typeof data.total === "number" ? data.total : 0,
     pageNum: data.current,
     pageSize: data.size,

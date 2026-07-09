@@ -9,6 +9,7 @@ import axios, {
 import qs from "qs";
 import { AuthStorage, redirectToLogin } from "./auth";
 import type { ApiResult } from "../api/shared/types";
+import type { AuthenticationToken } from "../api/system/auth/types";
 
 export const ApiCode = {
   success: "200",
@@ -20,19 +21,20 @@ export const ApiCode = {
 } as const;
 
 const businessCodeMessages: Record<string, string> = {
-  C10001: "请先修改初始密码",
-  C10010: "客户账号不存在",
-  C10011: "客户账号已停用",
-  C10012: "账号或密码错误",
-  C10013: "两次输入的密码不一致",
-  C10014: "密码强度不足",
-  C10015: "登录失败次数过多，请稍后再试",
-  C10020: "手机号已存在",
-  C10021: "缺少必填字段",
-  C10030: "图形验证码错误或已过期",
-  C40101: "访问令牌无效或已过期",
-  C40102: "访问令牌已加入黑名单，请重新登录",
-  C40103: "刷新令牌无效或已过期",
+  C10001: "请求参数错误",
+  C10002: "账号已停用",
+  C10003: "账号已锁定",
+  C10010: "旧密码错误",
+  C10011: "密码复杂度不足",
+  C10012: "确认密码不一致",
+  C10020: "手机号已被使用",
+  C10021: "账户不存在",
+  C10022: "无权限访问该资源",
+  C10030: "验证码错误",
+  C10040: "Token 无效或已过期",
+  A6011: "上传文件类型不合法",
+  A6012: "上传文件大小超出限制",
+  C6011: "上传到对象存储失败",
 };
 
 type NotifyError = (message: string) => void;
@@ -51,14 +53,17 @@ export class RequestBusinessError<TData = unknown> extends Error {
 
 export interface RequestConfig extends AxiosRequestConfig {
   silentError?: boolean;
+  skipAuthRefresh?: boolean;
 }
 
 export interface RequestClientOptions {
   adapter?: AxiosAdapter;
   baseURL?: string;
   getAccessToken?: () => string | null;
+  getRefreshToken?: () => string | null;
   notifyError?: NotifyError;
   onAuthExpired?: (message?: string) => void | Promise<void>;
+  setTokenPair?: (tokens: { accessToken?: string; refreshToken?: string }) => void;
 }
 
 export type DataRequestClient = Omit<
@@ -73,6 +78,22 @@ export type DataRequestClient = Omit<
 };
 
 const retriedConfigs = new WeakSet<InternalAxiosRequestConfig>();
+const ERROR_DEDUPE_WINDOW = 1500;
+
+function createDedupedNotifyError(notifyError: NotifyError): NotifyError {
+  let lastError: { message: string; time: number } | null = null;
+
+  return (message: string) => {
+    const now = Date.now();
+
+    if (lastError && lastError.message === message && now - lastError.time < ERROR_DEDUPE_WINDOW) {
+      return;
+    }
+
+    lastError = { message, time: now };
+    notifyError(message);
+  };
+}
 
 function defaultNotifyError(message: string) {
   // 统一派发请求错误事件，避免请求层直接依赖具体 UI 组件。
@@ -100,7 +121,8 @@ function getBusinessCode(data: unknown) {
 
 function getBusinessMessage(data: ApiResult | undefined, fallback: string) {
   const code = getBusinessCode(data);
-  return data?.msg || businessCodeMessages[code] || fallback;
+  // 新后端错误契约使用 message；msg 仅作为旧接口兼容字段。
+  return data?.message || data?.msg || businessCodeMessages[code] || fallback;
 }
 
 function shouldNotifyError(config?: AxiosRequestConfig) {
@@ -112,9 +134,12 @@ function isFormDataPayload(data: unknown): data is FormData {
 }
 
 export function createRequestClient(options: RequestClientOptions = {}): DataRequestClient {
-  const notifyError = options.notifyError ?? defaultNotifyError;
+  const notifyError = createDedupedNotifyError(options.notifyError ?? defaultNotifyError);
   const getAccessToken = options.getAccessToken ?? AuthStorage.getAccessToken;
+  const getRefreshToken = options.getRefreshToken ?? AuthStorage.getRefreshToken;
   const onAuthExpired = options.onAuthExpired ?? redirectToLogin;
+  const setTokenPair = options.setTokenPair ?? AuthStorage.setTokenPair.bind(AuthStorage);
+  let refreshTokenPromise: Promise<AuthenticationToken> | null = null;
 
   const client = axios.create({
     adapter: options.adapter,
@@ -124,6 +149,36 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
     paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
     timeout: 50000,
   });
+
+  function refreshAccessToken() {
+    const refreshToken = getRefreshToken();
+
+    if (!refreshToken) {
+      return Promise.reject(new Error("Token Invalid"));
+    }
+
+    if (!refreshTokenPromise) {
+      refreshTokenPromise = (client as DataRequestClient)
+        .post<AuthenticationToken>(
+          "/auth/refresh",
+          { refreshToken },
+          {
+            headers: { Authorization: "no-auth" },
+            silentError: true,
+            skipAuthRefresh: true,
+          },
+        )
+        .then((tokens) => {
+          setTokenPair(tokens);
+          return tokens;
+        })
+        .finally(() => {
+          refreshTokenPromise = null;
+        });
+    }
+
+    return refreshTokenPromise;
+  }
 
   client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
@@ -181,16 +236,27 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       const code = getBusinessCode(response.data);
       const message = getBusinessMessage(response.data, "请求失败");
 
+      if ((config as RequestConfig | undefined)?.skipAuthRefresh) {
+        return Promise.reject(
+          new RequestBusinessError(code, message, response.data?.data),
+        );
+      }
+
       if (isAccessTokenExpiredCode(code)) {
         if (!config || retriedConfigs.has(config as InternalAxiosRequestConfig)) {
           await onAuthExpired("登录已过期，请重新登录");
           return Promise.reject(new Error("Token Invalid"));
         }
 
-        // 当前阶段仅保留一次保护性重试位，真实 refresh-token 串联后续再接入。
         retriedConfigs.add(config as InternalAxiosRequestConfig);
-        await onAuthExpired("登录已过期，请重新登录");
-        return Promise.reject(new Error("Token Invalid"));
+
+        try {
+          await refreshAccessToken();
+          return client(config);
+        } catch {
+          await onAuthExpired("登录已过期，请重新登录");
+          return Promise.reject(new Error("Token Invalid"));
+        }
       }
 
       if (code === ApiCode.refreshTokenInvalid) {

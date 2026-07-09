@@ -28,6 +28,8 @@ export interface DigitalPerson {
 }
 
 export interface DigitalPersonPageResponse extends PageData<DigitalPerson> {
+  list: DigitalPerson[];
+  records: DigitalPerson[];
   pageNum?: number;
   pageSize?: number;
   pages?: number;

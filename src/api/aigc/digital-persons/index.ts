@@ -14,11 +14,14 @@ function mapDigitalPersonPageResponse(
   response: DigitalPersonBackendPageResponse,
   params?: DigitalPersonQuery,
 ): DigitalPersonPageResponse {
+  const records = response.records ?? [];
+
   return {
-    list: response.records ?? [],
+    list: records,
+    records,
     total: response.total ?? 0,
     pageNum: response.current ?? params?.pageNum ?? 1,
-    pageSize: response.size ?? params?.pageSize ?? response.records?.length ?? 0,
+    pageSize: response.size ?? params?.pageSize ?? records.length,
     pages: response.pages ?? Math.ceil((response.total ?? 0) / Math.max(response.size ?? params?.pageSize ?? 1, 1)),
   };
 }

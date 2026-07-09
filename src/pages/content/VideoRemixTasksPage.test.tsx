@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { Modal } from 'antd'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { videoRemixStatusOptions } from '../../features/video-remix/status'
 import { VideoRemixTasksPage } from './VideoRemixTasksPage'
 
 const listPageMocks = vi.hoisted(() => ({
@@ -47,12 +47,18 @@ function renderTaskListPage() {
 describe('VideoRemixTasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('confirm', vi.fn(() => true))
+    vi.spyOn(Modal, 'confirm').mockImplementation((config) => {
+      void config.onOk?.()
+      return {
+        destroy: vi.fn(),
+        update: vi.fn(),
+      }
+    })
 
     listPageMocks.getVideoRemixTaskPage.mockImplementation((params?: { status?: number }) => {
       if (params?.status === 2) {
         return Promise.resolve({
-          list: [
+          records: [
             {
               id: 2,
               name: 'Completed Task',
@@ -67,7 +73,7 @@ describe('VideoRemixTasksPage', () => {
       }
 
       return Promise.resolve({
-        list: [
+        records: [
           {
             id: 1,
             name: 'Queued Task',
@@ -99,25 +105,22 @@ describe('VideoRemixTasksPage', () => {
     })
   })
 
-  it('filters tasks by status and requests the matching status parameter', async () => {
+  it('filters tasks by keyword and requests the matching keyword parameter', async () => {
     renderTaskListPage()
 
     expect(await screen.findByText('Queued Task')).toBeInTheDocument()
     expect(screen.getByText('Completed Task')).toBeInTheDocument()
 
-    const completedOption = videoRemixStatusOptions.find((option) => option.value === 2)
-
-    expect(completedOption).toBeDefined()
-
-    fireEvent.mouseDown(screen.getByRole('combobox'))
-    fireEvent.click(await screen.findByText(String(completedOption!.label)))
+    fireEvent.change(screen.getByPlaceholderText('搜索任务名称或备注'), {
+      target: { value: 'Queued' },
+    })
 
     await waitFor(() => {
       expect(listPageMocks.getVideoRemixTaskPage).toHaveBeenLastCalledWith({
         pageNum: 1,
         pageSize: 10,
-        keyword: undefined,
-        status: 2,
+        keyword: 'Queued',
+        status: undefined,
       })
     })
   })

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Modal } from "antd";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DigitalHumanVideoTasksPage } from "./DigitalHumanVideoTasksPage";
@@ -100,11 +101,17 @@ function renderTaskPage() {
 describe("DigitalHumanVideoTasksPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {
+        destroy: vi.fn(),
+        update: vi.fn(),
+      };
+    });
 
     pageMocks.useDigitalHumanVideoPage.mockReturnValue({
       data: {
-        list: [
+        records: [
           {
             id: "video-1",
             personId: "person-1",
@@ -135,7 +142,7 @@ describe("DigitalHumanVideoTasksPage", () => {
 
     pageMocks.useDigitalHumanPage.mockReturnValue({
       data: {
-        list: [
+        records: [
           {
             id: "person-1",
             name: "小雅",
@@ -158,7 +165,7 @@ describe("DigitalHumanVideoTasksPage", () => {
 
     pageMocks.useCustomisedAudioPage.mockReturnValue({
       data: {
-        list: [
+        records: [
           { id: "audio-1", name: "客服女声", status: 2, audioPath: "https://example.com/audio-1.wav" },
           { id: "audio-2", name: "品牌男声", status: 2, audioPath: "https://example.com/audio-2.wav" },
         ],

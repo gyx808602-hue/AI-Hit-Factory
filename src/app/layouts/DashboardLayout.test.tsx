@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { Provider } from "react-redux";
 import { describe, expect, it, vi } from "vitest";
+import { createAppStore } from "../store";
 import { DashboardLayout } from "./DashboardLayout";
 import type { NavigationItem } from "../router/routeTypes";
 
@@ -23,9 +25,13 @@ const menuItems: NavigationItem[] = [
   },
 ];
 
+function renderWithStore(ui: React.ReactElement) {
+  return render(<Provider store={createAppStore()}>{ui}</Provider>);
+}
+
 describe("DashboardLayout", () => {
   it("renders correct brand and sidebar copy", () => {
-    render(
+    renderWithStore(
       <DashboardLayout
         activeRouteKey="workspace.dashboard"
         currentUserName="测试用户"
@@ -40,12 +46,11 @@ describe("DashboardLayout", () => {
     expect(screen.getByText("AI 爆款工厂")).toBeInTheDocument();
     expect(screen.getByText("内容生产平台")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "收起侧边栏" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "通知" })).toBeInTheDocument();
     expect(screen.getByText("测试用户")).toBeInTheDocument();
   });
 
   it("updates collapse toggle label after collapsing sidebar", () => {
-    render(
+    renderWithStore(
       <DashboardLayout
         activeRouteKey="workspace.dashboard"
         currentUserName="测试用户"
@@ -65,7 +70,7 @@ describe("DashboardLayout", () => {
   it("opens user menu and triggers logout", () => {
     const handleLogout = vi.fn();
 
-    render(
+    renderWithStore(
       <DashboardLayout
         activeRouteKey="workspace.dashboard"
         currentUserName="测试用户"

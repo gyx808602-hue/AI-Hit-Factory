@@ -175,9 +175,14 @@ export function VideoRemixTasksPage() {
               icon={<Trash2 size={12} />}
               loading={deleteMutation.isPending}
               onClick={() => {
-                if (window.confirm(`确认删除任务“${task.name}”吗？`)) {
-                  deleteMutation.mutate(task.id)
-                }
+                Modal.confirm({
+                  title: '确认删除任务？',
+                  content: `确认删除任务“${task.name}”吗？`,
+                  okText: '删除',
+                  cancelText: '取消',
+                  okButtonProps: { danger: true },
+                  onOk: () => deleteMutation.mutate(task.id),
+                })
               }}
             >
               删除
@@ -250,7 +255,7 @@ export function VideoRemixTasksPage() {
             rowKey="id"
             loading={listQuery.isLoading}
             columns={columns}
-            dataSource={listQuery.data?.list ?? []}
+            dataSource={listQuery.data?.records ?? []}
             pagination={{
               current: pageNum,
               pageSize,

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Modal } from "antd";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TextImageVideoTasksPage } from "./TextImageVideoTasksPage";
@@ -54,10 +55,16 @@ function renderTaskListPage() {
 describe("TextImageVideoTasksPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {
+        destroy: vi.fn(),
+        update: vi.fn(),
+      };
+    });
 
     const taskPageData = {
-      list: [
+      records: [
         {
           id: 1,
           imageUrls: ["https://example.com/a.png"],
@@ -110,7 +117,7 @@ describe("TextImageVideoTasksPage", () => {
     const pageData = await secondQueryOptions.queryFn();
 
     expect(pageData).toEqual({
-      list: [
+      records: [
         {
           id: 1,
           imageUrls: ["https://example.com/a.png"],
@@ -145,6 +152,13 @@ describe("TextImageVideoTasksPage", () => {
     renderTaskListPage();
 
     fireEvent.click(screen.getByRole("button", { name: "删除任务-1" }));
+
+    expect(Modal.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "确认删除任务？",
+        content: "确定删除任务 1 吗？",
+      }),
+    );
 
     await waitFor(() => {
       expect(listPageMocks.deleteTextImageVideoTask).toHaveBeenCalledWith(1);
@@ -182,7 +196,7 @@ describe("TextImageVideoTasksPage", () => {
     const interval = queryOptions.refetchInterval({
       state: {
         data: {
-          list: [
+          records: [
             {
               id: 1,
               imageUrls: [],
@@ -207,7 +221,7 @@ describe("TextImageVideoTasksPage", () => {
     const interval = queryOptions.refetchInterval({
       state: {
         data: {
-          list: [
+          records: [
             {
               id: 2,
               imageUrls: [],

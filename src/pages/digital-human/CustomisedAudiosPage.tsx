@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, message } from "antd";
+import { Button, Modal, message } from "antd";
 import { Plus } from "lucide-react";
 import type { CustomisedAudio } from "../../api/aigc/customised-audios/types";
 import { uploadAudio } from "../../api/aigc/uploads";
@@ -58,7 +58,7 @@ export function CustomisedAudiosPage() {
     setPageNum(1);
   }, [keyword, statusFilter]);
 
-  const audios = pageQuery.data?.list ?? [];
+  const audios = pageQuery.data?.records ?? [];
   const total = pageQuery.data?.total ?? 0;
 
   const metrics = useMemo(() => {
@@ -105,7 +105,6 @@ export function CustomisedAudiosPage() {
         ...current,
         url: (error as Error).message || "音频上传失败，请重新上传",
       }));
-      message.error((error as Error).message || "音频上传失败");
     } finally {
       setAudioUploading(false);
     }
@@ -138,17 +137,20 @@ export function CustomisedAudiosPage() {
       setFormValues(createDefaultAudioFormValues());
       setFormErrors({});
       setUploadedAudioName(null);
-    } catch (error) {
-      message.error((error as Error).message || "音色创建失败");
+    } catch {
+      // 接口错误由统一 request 层提示，页面只保留本地表单状态。
     }
   }
 
   function handleDelete(id: string | number) {
-    if (!window.confirm(`确认删除音色 ${id} 吗？`)) {
-      return;
-    }
-
-    deleteMutation.mutate(id);
+    Modal.confirm({
+      title: "确认删除音色？",
+      content: `确认删除音色 ${id} 吗？`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: () => deleteMutation.mutate(id),
+    });
   }
 
   return (

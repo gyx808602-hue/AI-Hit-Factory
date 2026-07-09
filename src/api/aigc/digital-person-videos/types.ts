@@ -85,6 +85,7 @@ export interface DigitalPersonVideoBackendPageResponse {
 
 export interface DigitalPersonVideoPageData {
   list: DigitalPersonVideo[];
+  records: DigitalPersonVideo[];
   total: number;
   pageNum?: number;
   pageSize?: number;

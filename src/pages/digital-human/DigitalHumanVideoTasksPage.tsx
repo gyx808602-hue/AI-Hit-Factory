@@ -326,10 +326,8 @@ function DigitalHumanVideoCreateModal({
                             ...values,
                             wavUrl: mapUploadResponseToWavUrl(upload),
                           })
-                        } catch (error) {
-                          message.error(
-                            (error as Error).message || '音频上传失败',
-                          )
+                        } catch {
+                          // 接口错误由统一 request 层提示。
                         }
                       }}
                     />
@@ -614,8 +612,8 @@ function DigitalHumanVideoCreateModal({
                         backgroundImageUrl:
                           mapUploadResponseToBackgroundConfig(upload),
                       })
-                    } catch (error) {
-                      message.error((error as Error).message || '背景图上传失败')
+                    } catch {
+                      // 接口错误由统一 request 层提示。
                     }
                   }}
                 />
@@ -744,10 +742,10 @@ export function DigitalHumanVideoTasksPage() {
     setPageNum(1)
   }, [keyword, statusFilter])
 
-  const tasks = taskPageQuery.data?.list ?? []
+  const tasks = taskPageQuery.data?.records ?? []
   const total = taskPageQuery.data?.total ?? 0
-  const digitalHumans = digitalHumanQuery.data?.list ?? []
-  const digitalHumanOptions = (digitalHumanQuery.data?.list ?? []).map(
+  const digitalHumans = digitalHumanQuery.data?.records ?? []
+  const digitalHumanOptions = (digitalHumanQuery.data?.records ?? []).map(
     (item) => ({
       value: String(item.id),
       label: item.name,
@@ -756,7 +754,7 @@ export function DigitalHumanVideoTasksPage() {
   const selectedDigitalHuman = digitalHumans.find(
     (item) => String(item.id) === formValues.personId,
   )
-  const customisedAudioOptions = (customisedAudioQuery.data?.list ?? []).map(
+  const customisedAudioOptions = (customisedAudioQuery.data?.records ?? []).map(
     (item) => ({
       value: String(item.id),
       label: item.name,
@@ -784,17 +782,20 @@ export function DigitalHumanVideoTasksPage() {
       setFormValues(createDefaultDigitalHumanVideoFormValues())
       setFormErrors({})
       navigate(`/digital-humans/videos/${created.id}`)
-    } catch (error) {
-      message.error((error as Error).message || '数字人视频创建失败')
+    } catch {
+      // 接口错误由统一 request 层提示，页面只保留本地表单状态。
     }
   }
 
   function handleDelete(id: string | number) {
-    if (!window.confirm(`确认删除任务 ${id} 吗？`)) {
-      return
-    }
-
-    deleteMutation.mutate(id)
+    Modal.confirm({
+      title: '确认删除任务？',
+      content: `确认删除任务 ${id} 吗？`,
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => deleteMutation.mutate(id),
+    })
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, message } from "antd";
+import { Button, Modal, message } from "antd";
 import { Plus } from "lucide-react";
 import { uploadImage, uploadVideo } from "../../api/aigc/uploads";
 import {
@@ -58,7 +58,7 @@ export function DigitalHumansPage() {
     setPageNum(1);
   }, [keyword, statusFilter]);
 
-  const humans = pageQuery.data?.list ?? [];
+  const humans = pageQuery.data?.records ?? [];
   const total = pageQuery.data?.total ?? 0;
 
   const metrics = useMemo(() => {
@@ -103,7 +103,6 @@ export function DigitalHumansPage() {
         ...current,
         file: (error as Error).message || "训练素材上传失败，请重新上传",
       }));
-      message.error((error as Error).message || "训练素材上传失败");
     } finally {
       setMaterialUploading(false);
     }
@@ -137,17 +136,20 @@ export function DigitalHumansPage() {
       setCreateOpen(false);
       resetCreateForm();
       navigate(`/digital-humans/${created.id}`);
-    } catch (error) {
-      message.error((error as Error).message || "数字人创建失败");
+    } catch {
+      // 接口错误由统一 request 层提示，页面只保留本地表单状态。
     }
   }
 
   function handleDelete(id: string | number) {
-    if (!window.confirm(`确认删除数字人 ${id} 吗？`)) {
-      return;
-    }
-
-    deleteMutation.mutate(id);
+    Modal.confirm({
+      title: "确认删除数字人？",
+      content: `确认删除数字人 ${id} 吗？`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: () => deleteMutation.mutate(id),
+    });
   }
 
   return (

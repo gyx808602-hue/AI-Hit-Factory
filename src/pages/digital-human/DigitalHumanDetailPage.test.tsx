@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Modal } from "antd";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DigitalHumanDetailPage } from "./DigitalHumanDetailPage";
@@ -48,7 +49,13 @@ function renderDetailPage(humanId = "human-1") {
 describe("DigitalHumanDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {
+        destroy: vi.fn(),
+        update: vi.fn(),
+      };
+    });
 
     detailMocks.useRefreshDigitalHumanMutation.mockReturnValue({
       mutate: vi.fn(),

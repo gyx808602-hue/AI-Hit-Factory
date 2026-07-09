@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { changePassword } from "./index";
+import { changePassword, refreshToken } from "./index";
 
 const { mockedPost } = vi.hoisted(() => ({
   mockedPost: vi.fn(),
@@ -28,5 +28,22 @@ describe("system auth api", () => {
     await changePassword(payload);
 
     expect(mockedPost).toHaveBeenCalledWith("/auth/password", payload);
+  });
+
+  it("posts refresh token to /auth/refresh without duplicating version prefix", async () => {
+    mockedPost.mockResolvedValue({
+      tokenType: "Bearer",
+      accessToken: "access-token",
+      refreshToken: "refresh-token-next",
+      expiresIn: 3600,
+    });
+
+    await refreshToken("refresh-token");
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      "/auth/refresh",
+      { refreshToken: "refresh-token" },
+      { headers: { Authorization: "no-auth" } },
+    );
   });
 });

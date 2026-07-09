@@ -39,12 +39,12 @@ export function sendLoginSmsCode(mobile: string): Promise<void> {
   });
 }
 
-// 刷新令牌的请求入口先保留，真正自动刷新流程后续再接入登录状态模块。
 export function refreshToken(refreshTokenValue: string): Promise<AuthenticationToken> {
-  return request.post<AuthenticationToken>("/auth/refresh-token", null, {
-    ...noAuth(),
-    params: { refreshToken: refreshTokenValue },
-  });
+  return request.post<AuthenticationToken>(
+    "/auth/refresh",
+    { refreshToken: refreshTokenValue },
+    noAuth(),
+  );
 }
 
 // 退出登录时仅负责通知服务端，前端 token 清理由调用方统一处理。

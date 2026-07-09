@@ -10,8 +10,11 @@ import type {
 const DIGITAL_PERSON_VIDEOS_BASE_URL = "/digital-person-videos"; 
 
 function toPageData(data: DigitalPersonVideoBackendPageResponse): DigitalPersonVideoPageData {
+  const records = Array.isArray(data.records) ? data.records : [];
+
   return {
-    list: Array.isArray(data.records) ? data.records : [],
+    list: records,
+    records,
     total: typeof data.total === "number" ? data.total : 0,
     pageNum: data.current,
     pageSize: data.size,

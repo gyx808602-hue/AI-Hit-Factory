@@ -26,6 +26,8 @@ export interface CustomisedAudio {
 }
 
 export interface CustomisedAudioPageData extends PageData<CustomisedAudio> {
+  list: CustomisedAudio[];
+  records: CustomisedAudio[];
   pageNum?: number;
   pageSize?: number;
   pages?: number;

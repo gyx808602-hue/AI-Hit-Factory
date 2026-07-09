@@ -2780,3 +2780,164 @@
 - 当前判断：行为边界已经在 OpenSpec、专题文档��测试中三处固定，能降低后续误回逢�风险〄1�7
 - 下一步：执行 typecheck 丄1�7 OpenSpec strict 校验，必要时修复本次相关类型问题〄1�7
 - 验证结果：音色与数字人定向测试已通过；typecheck 咄1�7 strict 校验执行中��1�7
+---
+
+## 2026-07-09 Redux UI 偏好状态 OpenSpec 拆解
+
+### 已完成
+
+- 已扫描当前项目技术栈：Vite + React + TypeScript + Ant Design + TailwindCSS + TanStack Query。
+- 已确认当前尚未安装 `@reduxjs/toolkit` 与 `react-redux`。
+- 已定位主题与布局状态现状：
+  - `src/app/App.tsx` 中硬编码 Ant Design `ConfigProvider` theme token。
+  - `src/app/styles.css` 中硬编码整体页面 CSS 变量。
+  - `src/app/layouts/DashboardLayout.tsx` 中用本地 `useState` 保存侧边栏折叠状态。
+- 已确认已有 `optimize-ui-component-consistency` 明确不做全局主题换肤，因此本需求单独建立 OpenSpec change。
+- 已新增 OpenSpec change：`openspec/changes/add-redux-ui-preferences/`，包含：
+  - `proposal.md`
+  - `design.md`
+  - `tasks.md`
+  - `specs/ui-preferences/spec.md`
+
+### 当前判断
+
+- 本需求属于客户端 UI 偏好状态治理，不应放入 React Query，也不应只改 Ant Design token。
+- 主题色必须同时驱动 Ant Design token 与 CSS custom properties，才能覆盖页面背景、侧边栏、卡片、文字、滚动条和自定义布局样式。
+- 页面布局偏好当前先聚焦 `sidebarCollapsed`，后续若需要用户设置页或持久化，可在 Redux slice 基础上继续扩展。
+- 本阶段只完成方案与 OpenSpec 文档，尚未修改业务代码，也尚未安装 Redux 依赖。
+
+### 下一步
+
+1. 等待用户确认“开始执行”。
+2. 安装 `@reduxjs/toolkit` 与 `react-redux`。
+3. 新增 app store、typed hooks、`uiPreferences` slice、selectors 和 CSS 变量同步逻辑。
+4. 改造 `main.tsx`、`App.tsx`、`DashboardLayout.tsx` 接入 Redux。
+5. 补充 reducer、selector、主题同步和布局折叠测试。
+
+### 验证结果
+
+- 已执行：`cmd /c openspec validate add-redux-ui-preferences --strict`
+- 结果：通过，`Change 'add-redux-ui-preferences' is valid`。
+- 尚未运行代码测试；本阶段未改业务代码。
+
+---
+
+## 2026-07-09 Redux UI 偏好状态实现阶段
+
+### 已完成
+
+- 已按 `add-redux-ui-preferences` OpenSpec 开始执行。
+- 已安装依赖：`@reduxjs/toolkit`、`react-redux`。
+- 已新增 Redux 基础设施：
+  - `src/app/store.ts`
+  - `src/app/hooks.ts`
+- 已新增 UI 偏好模块：
+  - `src/features/ui-preferences/slice.ts`
+  - `src/features/ui-preferences/selectors.ts`
+  - `src/features/ui-preferences/ThemeCssVariables.tsx`
+- 已把 `main.tsx` 接入 Redux `Provider`，保留 React Query 与 Router 原有层级。
+- 已把 `App.tsx` 的 Ant Design theme 改为从 Redux selector 派生。
+- 已把整体 CSS 变量同步到 `document.documentElement.style`，覆盖品牌色、页面背景、侧边栏、卡片、文字等变量。
+- 已把 `DashboardLayout.tsx` 的侧边栏折叠状态从本地 `useState` 迁移到 Redux。
+- 已将侧边栏品牌渐变、激活菜单背景、边框和文字色改为 CSS 变量引用。
+- 已新增/调整测试：
+  - `src/features/ui-preferences/slice.test.ts`
+  - `src/features/ui-preferences/ThemeCssVariables.test.tsx`
+  - `src/app/App.ui-preferences.test.tsx`
+  - `src/app/layouts/DashboardLayout.test.tsx`
+  - `vitest.ui-preferences-temp.config.ts`
+
+### 当前判断
+
+- Redux 只承载客户端 UI 偏好状态，没有接管任何服务端接口数据，React Query 边界保持不变。
+- 主题状态现在同时驱动 Ant Design token 与 CSS custom properties，满足“整体主题色”的要求。
+- 本次未做 localStorage 持久化，刷新后回到默认主题与布局，符合“先这样”的轻量范围。
+- 运行 `src/app/App.test.tsx` 时发现该旧测试访问 `/assets`、`/tasks` 等当前 `routeRegistry` 已注释路由，导致统一进入 404；该问题与本次 Redux 迁移无关，因此本次没有顺手改路由或旧测试，只新增了聚焦 UI 偏好的 App 集成测试。
+
+### 下一步
+
+1. 执行 `npm run typecheck`。
+2. 执行 `cmd /c openspec validate add-redux-ui-preferences --strict`。
+3. 根据验证结果收尾勾选 OpenSpec 剩余验证任务。
+
+### 验证结果
+
+- 已执行红灯测试：缺少 `slice`、`store`、`ThemeCssVariables` 时测试失败，符合 TDD 预期。
+- 已执行：`cmd /c npm test -- --config vitest.ui-preferences-temp.config.ts`
+- 结果：通过，4 个测试文件、11 个用例全部通过。
+
+---
+
+## 2026-07-09 Redux UI 偏好状态验证收尾
+
+### 已完成
+
+- 已完成 `add-redux-ui-preferences` 全部 OpenSpec 任务勾选。
+- 已执行本次定向测试并通过：`cmd /c npm test -- --config vitest.ui-preferences-temp.config.ts`。
+- 已执行 OpenSpec strict 校验并通过：`cmd /c openspec validate add-redux-ui-preferences --strict`。
+- 已执行全项目类型检查：`npm run typecheck`。
+
+### 当前判断
+
+- Redux Toolkit 已接入应用入口，主题色和布局偏好已进入 Redux 管理。
+- 整体主题色现在同时覆盖 Ant Design token 和 CSS 变量，不再只影响组件库主题。
+- 侧边栏折叠状态已由 Redux 管理，后续可继续扩展设置页或持久化。
+- `npm run typecheck` 当前失败，但失败点均位于本次改动范围外的既有文件，例如：
+  - `src/features/digital-human/audio/hooks.ts`
+  - `src/features/digital-human/hooks.ts`
+  - `src/pages/content/VideoRemixTasksPage.tsx`
+  - `src/pages/digital-human/DigitalHumanVideoTasksPage.tsx`
+  - `src/utils/request.ts`
+- 本次未修改上述无关类型错误文件，避免扩大变更范围或覆盖其他正在进行的改动。
+
+### 下一步
+
+1. 如需让全项目 `typecheck` 通过，需要另起任务处理现有类型错误。
+2. 若需要刷新后记住主题或侧边栏折叠状态，可在当前 Redux slice 基础上新增持久化方案。
+3. 若要做主题设置入口，可新增页面或个人偏好区域调用 `setThemePalette`、`setThemeSurfaces` 等 action。
+
+### 验证结果
+
+- `cmd /c npm test -- --config vitest.ui-preferences-temp.config.ts`：通过，4 个测试文件、11 个用例全部通过。
+- `cmd /c openspec validate add-redux-ui-preferences --strict`：通过。
+- `npm run typecheck`：失败，失败均为既有范围外类型错误；本次 Redux/UI 偏好新增代码未在输出中报错。
+
+
+---
+
+## 2026-07-09 请求错误码与 message 契约同步
+
+### 已完成
+
+- 已读取并确认外部错误码文档 `error-codes(1).md` 的新接口契约：
+  - 成功响应统一为 `{"code":"0","data":...}`。
+  - 失败响应使用 `{"code":"Cxxxxx","message":"..."}` 或 `{"code":"Axxxx","message":"..."}`。
+  - 错误码表中的默认 message 仅作为兜底。
+- 已同步全局请求层：
+  - `src/api/shared/types.ts`：`ApiResult` 新增 `message?: string`，保留 `msg?: string` 兼容旧接口。
+  - `src/utils/request.ts`：错误内容优先级调整为 `message -> msg -> 错误码兜底文案 -> 默认文案`。
+  - `src/utils/request.ts`：将旧兜底错误码表替换为新文档中的全局错误码，包括 `C10001`、`C10040`、`A6011`、`A6012`、`C6011` 等。
+  - `src/utils/request.ts`：成功请求只解包并返回 `data`，不会返回成功 message，也不会触发全局错误提示。
+- 已同步项目测试样例：
+  - `src/utils/request.test.ts`：新增/调整新契约回归用例，覆盖 `message` 优先、成功 message 不返回、错误码兜底文案、HTTP 错误响应兜底。
+  - `src/pages/auth/LoginPage.test.tsx`：首次改密分支的 mock 错误对象从旧 `msg` 改为新 `message` 字段。
+
+### 当前判断
+
+- 全局接口报错内容现在会优先使用后端返回的 `message` 字段；只有后端未返回 message 时才使用错误码表兜底。
+- 保留旧 `msg` 兼容是必要的，避免历史接口或旧 mock 还未完全迁移时出现空提示。
+- 成功提示仍由页面业务动作自己决定，例如修改密码成功后的 `message.success("密码修改成功，请重新登录")`；请求层不负责成功 toast，避免成功接口返回 message 后误弹全局提示。
+- 本次属于请求基础层契约同步，不需要为页面逐个维护错误码文案；后续页面只要走统一 request 层即可复用。
+
+### 下一步
+
+1. 若后端确认旧成功码 `200/00000` 已彻底下线，可再单独评估是否移除兼容成功码。
+2. 后续新增 API 测试时，失败响应 mock 默认使用 `message` 字段，`msg` 仅用于兼容性测试。
+3. 如需彻底清理历史文档乱码，可另起文档整理任务，避免本次请求契约修改扩大范围。
+
+### 验证结果
+
+- 已执行红灯测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，变更生产代码前 3 个用例按预期失败，证明旧实现未满足新契约。
+- 已执行定向请求层测试：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts`，18 个用例全部通过。
+- 已执行请求层 + 登录页回归：`cmd /c npm test -- --config vite.request-test.config.ts src/utils/request.test.ts src/pages/auth/LoginPage.test.tsx`，2 个测试文件、26 个用例全部通过。
+- 测试过程中出现 npm 全局配置提示与 jsdom 伪元素 `getComputedStyle` 提示，均为既有测试环境提示，不影响本次用例通过。

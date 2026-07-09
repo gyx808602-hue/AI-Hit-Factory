@@ -1,4 +1,4 @@
-import { Alert, Button, Empty } from "antd";
+import { Alert, Button, Empty, Modal } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { getDigitalHumanStatusMeta } from "../../features/digital-human/status";
 import {
@@ -24,13 +24,18 @@ export function DigitalHumanDetailPage() {
       return;
     }
 
-    if (!window.confirm(`确认删除数字人 ${humanId} 吗？`)) {
-      return;
-    }
-
-    deleteMutation.mutate(humanId, {
-      onSuccess: () => {
-        navigate("/digital-humans");
+    Modal.confirm({
+      title: "确认删除数字人？",
+      content: `确认删除数字人 ${humanId} 吗？`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        deleteMutation.mutate(humanId, {
+          onSuccess: () => {
+            navigate("/digital-humans");
+          },
+        });
       },
     });
   }
@@ -43,7 +48,7 @@ export function DigitalHumanDetailPage() {
         <div className="flex gap-2">
           <Button onClick={() => navigate("/digital-humans")}>返回列表</Button>
           <Button onClick={() => refreshMutation.mutate(humanId ?? "")}>刷新状态</Button>
-          <Button danger onClick={handleDelete}>
+          <Button danger loading={deleteMutation.isPending} disabled={deleteMutation.isPending} onClick={handleDelete}>
             删除数字人
           </Button>
         </div>

@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { message } from "antd";
+import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { createAppStore } from "./store";
 import { AuthStorage, redirectToLogin } from "../utils/auth";
 
 const menuApiMock = vi.hoisted(() => ({
@@ -42,11 +44,13 @@ function renderApp(initialEntries: string[]) {
   });
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>
-        <App />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <Provider store={createAppStore()}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </Provider>,
   );
 }
 
@@ -172,8 +176,8 @@ describe("App auth routing", () => {
     const inactiveMenuButton = screen.getByRole("button", { name: /追爆任务/i });
 
     expect(taskMenuButton).toHaveStyle({
-      background: "rgba(124,92,252,0.16)",
-      color: "#9B7FFF",
+      background: "var(--brand-primary-active)",
+      color: "var(--brand-primary-hover)",
     });
     expect(inactiveMenuButton).toHaveStyle({
       background: "transparent",
@@ -192,7 +196,7 @@ describe("App auth routing", () => {
 
     const highlightedMenuButtons = screen
       .getAllByRole("button")
-      .filter((button) => button.style.background === "rgba(124, 92, 252, 0.16)");
+      .filter((button) => button.style.background === "var(--brand-primary-active)");
 
     expect(highlightedMenuButtons).toHaveLength(1);
     expect(highlightedMenuButtons[0]).toHaveAccessibleName("文图生视频任务");
@@ -212,8 +216,8 @@ describe("App auth routing", () => {
     const digitalHumanMenuButton = screen.getByRole("button", { name: /数字人管理/i });
 
     expect(videoTaskMenuButton).toHaveStyle({
-      background: "rgba(124,92,252,0.16)",
-      color: "#9B7FFF",
+      background: "var(--brand-primary-active)",
+      color: "var(--brand-primary-hover)",
     });
     expect(digitalHumanMenuButton).toHaveStyle({
       background: "transparent",

@@ -15,8 +15,11 @@ import {
   Video,
   Zap,
 } from 'lucide-react'
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useMemo } from 'react'
+import { useAppDispatch, useAppSelector } from '../hooks'
 import type { NavigationItem, RouteKey } from '../router/routeTypes'
+import { selectSidebarCollapsed } from '../../features/ui-preferences/selectors'
+import { toggleSidebarCollapsed } from '../../features/ui-preferences/slice'
 
 type DashboardLayoutProps = {
   activeRouteKey: RouteKey
@@ -46,7 +49,8 @@ export function DashboardLayout({
   onNavigate,
   onLogout,
 }: DashboardLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const dispatch = useAppDispatch()
+  const collapsed = useAppSelector(selectSidebarCollapsed)
   const userMenuItems = useMemo<MenuProps['items']>(
     () => [
       {
@@ -66,7 +70,7 @@ export function DashboardLayout({
         style={{ width: collapsed ? 64 : 224 }}
       >
         <div className="flex h-[56px] items-center gap-3 border-b border-[var(--line-subtle)] px-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-gradient)]">
             <Zap size={16} color="#fff" strokeWidth={2.5} />
           </div>
           {!collapsed && (
@@ -95,9 +99,9 @@ export function DashboardLayout({
                 className="flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition"
                 style={{
                   justifyContent: collapsed ? 'center' : 'flex-start',
-                  borderColor: active ? 'rgba(124,92,252,0.35)' : 'transparent',
-                  background: active ? 'rgba(124,92,252,0.16)' : 'transparent',
-                  color: active ? '#9B7FFF' : 'var(--text-muted)',
+                  borderColor: active ? 'var(--brand-primary-border)' : 'transparent',
+                  background: active ? 'var(--brand-primary-active)' : 'transparent',
+                  color: active ? 'var(--brand-primary-hover)' : 'var(--text-muted)',
                 }}
                 title={collapsed ? item.title : undefined}
                 onClick={() => onNavigate(item)}
@@ -117,7 +121,7 @@ export function DashboardLayout({
           <button
             type="button"
             className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--text-muted)] transition hover:bg-white/5 hover:text-[var(--text-primary)]"
-            onClick={() => setCollapsed((value) => !value)}
+            onClick={() => dispatch(toggleSidebarCollapsed())}
             aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
           >
             <ChevronRight
@@ -147,7 +151,7 @@ export function DashboardLayout({
               className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-[var(--text-secondary)] transition hover:bg-white/5"
               aria-label={`当前登录用户：${currentUserName}`}
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7C5CFC,#F97316)]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--brand-gradient)]">
                 <User size={13} color="#fff" />
               </span>
               <span className="hidden max-w-[120px] truncate sm:inline">

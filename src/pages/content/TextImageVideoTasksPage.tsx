@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Empty, Segmented } from "antd";
+import { Button, Empty, Modal, Segmented } from "antd";
 import { ListTodo, Plus, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -130,13 +130,18 @@ export function TextImageVideoTasksPage() {
       return;
     }
 
-    if (!window.confirm(`确定删除任务 ${task.id} 吗？`)) {
-      return;
-    }
-
-    pendingDeleteTaskIdRef.current = task.id;
-    setPendingDeleteTaskId(task.id);
-    deleteTaskMutation.mutate(task.id);
+    Modal.confirm({
+      title: "确认删除任务？",
+      content: `确定删除任务 ${task.id} 吗？`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        pendingDeleteTaskIdRef.current = task.id;
+        setPendingDeleteTaskId(task.id);
+        deleteTaskMutation.mutate(task.id);
+      },
+    });
   }
 
   return (

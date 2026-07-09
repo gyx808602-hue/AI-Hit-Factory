@@ -11,8 +11,11 @@ import type {
 const CUSTOMISED_AUDIOS_BASE_URL = "/customised-audios";
 
 function toPageData(data: CustomisedAudioBackendPageResponse): CustomisedAudioPageData {
+  const records = Array.isArray(data.records) ? data.records : [];
+
   return {
-    list: Array.isArray(data.records) ? data.records : [],
+    list: records,
+    records,
     total: typeof data.total === "number" ? data.total : 0,
     pageNum: data.current,
     pageSize: data.size,

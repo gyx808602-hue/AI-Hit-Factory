@@ -1,4 +1,4 @@
-import { Alert, Button, Empty } from "antd";
+import { Alert, Button, Empty, Modal } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteDigitalHumanVideoMutation,
@@ -48,13 +48,18 @@ export function DigitalHumanVideoTaskDetailPage() {
       return;
     }
 
-    if (!window.confirm(`确认删除任务 ${taskId} 吗？`)) {
-      return;
-    }
-
-    deleteMutation.mutate(taskId, {
-      onSuccess: () => {
-        navigate("/digital-humans/videos");
+    Modal.confirm({
+      title: "确认删除任务？",
+      content: `确认删除任务 ${taskId} 吗？`,
+      okText: "删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        deleteMutation.mutate(taskId, {
+          onSuccess: () => {
+            navigate("/digital-humans/videos");
+          },
+        });
       },
     });
   }
@@ -74,7 +79,13 @@ export function DigitalHumanVideoTaskDetailPage() {
           >
             刷新状态
           </Button>
-          <Button data-testid="digital-human-delete-button" danger onClick={handleDelete}>
+          <Button
+            data-testid="digital-human-delete-button"
+            danger
+            loading={deleteMutation.isPending}
+            disabled={deleteMutation.isPending}
+            onClick={handleDelete}
+          >
             删除任务
           </Button>
         </div>

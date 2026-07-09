@@ -35,3 +35,90 @@
 
 - 已完成只读扫描与 OpenSpec 文档创建。
 - 尚未修改业务代码，尚未运行代码测试。
+
+---
+
+# 2026-07-09 请求层无感刷新实现阶段
+
+## 已完成
+
+- 已按 `add-silent-token-refresh` 读取 OpenSpec 上下文与任务，确认本次实现范围。
+- 已在 `src/utils/request.test.ts` 补充请求层 TDD 用例，覆盖：
+  - access token 失效后刷新并重放原请求。
+  - 并发失效请求共享同一次 refresh。
+  - refresh 失败时不重放原请求。
+  - 无 refresh token 时不调用刷新接口。
+  - 相同错误文案短时间内只通知一次。
+- 已在 `src/utils/request.ts` 实现共享 refresh Promise、刷新成功写入 token、原请求重放、refresh 失败登录过期、重复失效防死循环、错误提示去重。
+- 已在 `src/api/system/auth/index.ts` 将刷新接口调整为 `POST /v1/auth/refresh`，参数为 `{ refreshToken }`。
+- 已更新 `openspec/changes/add-silent-token-refresh/tasks.md`，勾选请求层与测试相关任务。
+
+## 当前判断
+
+- 请求层行为已按 TDD 形成红绿闭环。
+- refresh 请求通过 `skipAuthRefresh` 避免自身失败时递归触发认证过期，原业务请求统一负责触发一次登录过期流程。
+- 页面层仍需继续处理重复 `message.error` 与 `window.confirm` 替换。
+
+## 下一步
+
+1. 扫描并分类页面中的 `message.error`、`window.confirm` 使用点。
+2. 将删除确认改为 Ant Design `Popconfirm` 或 `Modal.confirm`。
+3. 去掉接口 catch 中与请求层重复的错误提示，保留本地校验类提示。
+4. 补充/更新页面定向测试。
+
+## 验证结果
+
+- 已执行：`cmd /c npx vitest run --config vite.request-test.config.ts src/utils/request.test.ts`
+- 结果：通过，1 个测试文件、16 个测试用例全部通过。
+
+---
+
+# 2026-07-09 页面提示与组件确认阶段
+## 已完成
+- 已扫描页面中的 `message.error`、`notification.error`、`window.confirm`、`alert` 使用点。
+- 已移除接口 catch 中与 request 统一错误提示重复的页面 `message.error`。
+- 已保留本地校验提示：例如数字人训练素材文件类型校验仍由页面提示。
+- 已将命中页面的原生 `window.confirm` 替换为 Ant Design `Modal.confirm`：
+  - 数字人列表与详情页
+  - 定制音色列表页
+  - 数字人视频任务列表与详情页
+  - 文图生视频任务页
+  - 视频混剪任务页
+- 已为详情页删除按钮补充 `loading` / `disabled`，避免重复删除提交。
+- 已更新受影响页面测试：确认弹窗由 `Modal.confirm` mock 驱动，分页数据字段同步为 `records`。
+- 已同步 OpenSpec tasks：2.2、2.3、2.4、3.1、3.2、3.3、4.2、4.3 已完成。
+
+## 当前判断
+- 业务页面中已无原生 `window.confirm`。
+- 页面级重复错误弹窗已收敛到 request 层；页面仅保留本地校验提示和成功提示。
+- `src/app/App.tsx` 的全局 `request:error` 监听继续作为兜底，不与 request 层去重冲突。
+
+## 下一步
+1. 执行 `cmd /c npm run typecheck`。
+2. 执行 `cmd /c openspec validate add-silent-token-refresh --strict`。
+3. 根据最终验证结果更新任务勾选与本进展文档。
+
+## 验证结果
+- 已执行：`cmd /c npx vitest run --config vite.request-test.config.ts src/utils/request.test.ts src/pages/content/TextImageVideoTasksPage.test.tsx src/pages/content/VideoRemixTasksPage.test.tsx src/pages/digital-human/DigitalHumansPage.test.tsx src/pages/digital-human/CustomisedAudiosPage.test.tsx src/pages/digital-human/DigitalHumanVideoTasksPage.test.tsx src/pages/digital-human/DigitalHumanDetailPage.test.tsx src/pages/digital-human/DigitalHumanVideoTaskDetailPage.test.tsx src/pages/digital-human/DigitalHumanVideoTasksPage.alert-regression.test.tsx`
+- 结果：通过，9 个测试文件、65 个测试用例全部通过。
+
+---
+
+# 2026-07-09 最终验证阶段
+## 已完成
+- 已修复类型检查暴露的分页类型过渡问题：分页 mapper 同时返回 `list` 和 `records`，兼容旧 hook 缓存合并与当前页面读取。
+- 已修复 request 刷新调用的 TypeScript 类型，让 refresh 请求按统一 DataRequestClient 返回 token data。
+- 已完成全部 OpenSpec 任务勾选。
+
+## 当前判断
+- 无感刷新、并发等待、刷新失败不重放、错误提示去重、页面重复错误提示收敛、组件确认删除均已形成代码与测试闭环。
+- `doc/progress.md` 当前仍存在历史编码异常，本次继续使用专题进展文档记录，避免破坏既有内容。
+
+## 下一步
+- 可进入代码提交/上传流程。
+
+## 验证结果
+- 已执行：`cmd /c npm run typecheck`
+- 结果：通过。
+- 已执行：`cmd /c openspec validate add-silent-token-refresh --strict`
+- 结果：通过，`Change 'add-silent-token-refresh' is valid`。

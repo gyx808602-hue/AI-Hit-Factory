@@ -1,5 +1,6 @@
 ﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { Modal } from "antd";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DigitalHumansPage } from "./DigitalHumansPage";
@@ -83,7 +84,13 @@ function clickPrimaryModalButton() {
 describe("DigitalHumansPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {
+        destroy: vi.fn(),
+        update: vi.fn(),
+      };
+    });
     vi.stubGlobal(
       "URL",
       Object.assign(globalThis.URL ?? {}, {
@@ -94,7 +101,7 @@ describe("DigitalHumansPage", () => {
 
     pageMocks.useDigitalHumanPage.mockReturnValue({
       data: {
-        list: [
+        records: [
           {
             id: "human-1",
             name: "Human One",
@@ -356,7 +363,7 @@ describe("DigitalHumansPage", () => {
       })
       .mockReturnValueOnce({
         data: {
-          list: [],
+          records: [],
           total: 0,
           pageNum: 1,
           pageSize: 10,

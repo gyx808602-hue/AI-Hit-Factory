@@ -272,15 +272,6 @@ export function VideoRemixTaskDetailPage() {
     setActionSuccess('')
   }, [actionSuccess])
 
-  useEffect(() => {
-    if (!actionError) {
-      return
-    }
-
-    void message.error(actionError)
-    setActionError('')
-  }, [actionError])
-
   async function saveCurrentFormValues(
     fieldNames?: Array<keyof VideoRemixTaskFormValues>,
   ) {

@@ -1,4 +1,4 @@
-import { ConfigProvider, message, Spin, theme } from "antd";
+import { ConfigProvider, message, Spin } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { matchRoutes, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import { logout } from "../api/system/auth";
 import { ForbiddenPage } from "../pages/system/ForbiddenPage";
 import { NotFoundPage } from "../pages/system/NotFoundPage";
 import { AuthStorage } from "../utils/auth";
+import { useAppSelector } from "./hooks";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { clearAllKeepAliveRouteCaches, KeepAliveOutlet } from "./router/KeepAliveOutlet";
 import { resolveHomeRoutePath } from "./router/homeRoute";
@@ -13,6 +14,8 @@ import { routeRegistry } from "./router/routeRegistry";
 import { resolveRouteAccess } from "./router/routeGuards";
 import type { AppRoute, DynamicRouteState, NavigationItem } from "./router/routeTypes";
 import { useCurrentUserRoutes } from "./router/useCurrentUserRoutes";
+import { selectAntdThemeConfig } from "../features/ui-preferences/selectors";
+import { ThemeCssVariables } from "../features/ui-preferences/ThemeCssVariables";
 
 function getDefaultWorkspaceRoute(routes: AppRoute[]) {
   return routes.find((route) => !route.meta.hideInMenu) ?? routes[0];
@@ -145,6 +148,7 @@ function WorkspaceOutlet({
 }
 
 export function App() {
+  const antdThemeConfig = useAppSelector(selectAntdThemeConfig);
   const location = useLocation();
   const navigate = useNavigate();
   const lastRequestErrorRef = useRef<{ message: string; time: number } | null>(null);
@@ -294,37 +298,9 @@ export function App() {
   return (
     <ConfigProvider
       locale={zhCN}
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: "#7C5CFC",
-          colorInfo: "#22D3EE",
-          colorSuccess: "#4ADE80",
-          colorWarning: "#F97316",
-          colorError: "#EF4444",
-          colorBgBase: "#0C0D14",
-          colorBgContainer: "#13141F",
-          colorBgElevated: "#1A1B28",
-          colorBorder: "rgba(255,255,255,0.08)",
-          borderRadius: 8,
-          fontFamily:
-            "Inter, Microsoft YaHei, PingFang SC, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-        },
-        components: {
-          Button: {
-            controlHeight: 36,
-            borderRadius: 8,
-          },
-          Card: {
-            colorBgContainer: "#13141F",
-          },
-          Table: {
-            colorBgContainer: "#13141F",
-            colorFillAlter: "rgba(255,255,255,0.02)",
-          },
-        },
-      }}
+      theme={antdThemeConfig}
     >
+      <ThemeCssVariables />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           {publicRouteElements}

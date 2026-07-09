@@ -196,7 +196,7 @@ describe("LoginPage", () => {
   it("opens a forced password change dialog when login returns C10001", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
-      msg: "请先修改初始密码",
+      message: "请先修改初始密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",
@@ -236,7 +236,7 @@ describe("LoginPage", () => {
   it("stores temporary tokens when C10001 response includes token data", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
-      msg: "请先修改初始密码",
+      message: "请先修改初始密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",
@@ -263,7 +263,7 @@ describe("LoginPage", () => {
   it("blocks forced password change submit when confirm password does not match", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
-      msg: "请先修改初始密码",
+      message: "请先修改初始密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",
@@ -298,7 +298,7 @@ describe("LoginPage", () => {
   it("returns to the login form after changing the initial password", async () => {
     mockedLogin.mockRejectedValueOnce({
       code: "C10001",
-      msg: "请先修改初始密码",
+      message: "请先修改初始密码",
       data: {
         accessToken: "access-token",
         refreshToken: "refresh-token",

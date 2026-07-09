@@ -117,14 +117,14 @@ describe('DigitalHumanVideoTasksPage alert regression', () => {
     })
 
     pageMocks.useDigitalHumanPage.mockReturnValue({
-      data: { list: [], total: 0 },
+      data: { records: [], total: 0 },
       isLoading: false,
       isError: false,
       error: null,
     })
 
     pageMocks.useCustomisedAudioPage.mockReturnValue({
-      data: { list: [], total: 0, pageNum: 1, pageSize: 100, pages: 0 },
+      data: { records: [], total: 0, pageNum: 1, pageSize: 100, pages: 0 },
       isLoading: false,
       isError: false,
       error: null,

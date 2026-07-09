@@ -67,6 +67,7 @@ export interface VideoRemixTaskPageResponse {
 
 export interface VideoRemixTaskPageData {
   list: VideoRemixTask[];
+  records: VideoRemixTask[];
   total: number;
   pageNum?: number;
   pageSize?: number;
