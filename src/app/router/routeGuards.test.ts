@@ -8,13 +8,13 @@ describe("resolveRouteAccess", () => {
   });
 
   it("returns forbidden when route exists but permission check fails", () => {
-    const route = getRouteByKey("workspace.dashboard");
+    const route = getRouteByKey("content.viralRemixTasks");
 
     expect(resolveRouteAccess(route, false)).toEqual({ allowed: false, reason: "forbidden" });
   });
 
   it("returns unauthenticated when an auth route has no access token", () => {
-    const route = getRouteByKey("workspace.dashboard");
+    const route = getRouteByKey("content.viralRemixTasks");
 
     expect(resolveRouteAccess(route, { hasAccessToken: false })).toEqual({
       allowed: false,
@@ -23,7 +23,7 @@ describe("resolveRouteAccess", () => {
   });
 
   it("allows auth routes without an access token when bypass is enabled", () => {
-    const route = getRouteByKey("workspace.dashboard");
+    const route = getRouteByKey("content.viralRemixTasks");
 
     expect(
       resolveRouteAccess(route, {
@@ -40,7 +40,7 @@ describe("resolveRouteAccess", () => {
   });
 
   it("returns route when access is allowed", () => {
-    const route = getRouteByKey("workspace.dashboard");
+    const route = getRouteByKey("content.viralRemixTasks");
 
     expect(resolveRouteAccess(route)).toEqual({ allowed: true, route });
   });

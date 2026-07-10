@@ -19,12 +19,20 @@ export interface VideoRemixTaskFormValues {
 const DRAFT_KEY_PREFIX = "video-remix:draft:";
 const DEFAULT_TARGET_VIDEO_MODEL = "dreamina-seedance-2-0";
 
+export function getVideoRemixTaskPrompt(task: Partial<VideoRemixTask>) {
+  return task.generatedPrompt ?? task.prompt ?? "";
+}
+
 function joinUrls(urls?: string[]) {
   return Array.isArray(urls) ? urls.join("\n") : "";
 }
 
 function normalizeText(value?: string) {
   return value?.trim() ?? "";
+}
+
+function firstNonEmptyText(...values: Array<string | undefined>) {
+  return values.find((value) => value && value.trim()) ?? "";
 }
 
 function splitUrls(text: string) {
@@ -43,14 +51,14 @@ export function mapTaskDetailToFormValues(task: Partial<VideoRemixTask>): VideoR
     targetVideoModel: DEFAULT_TARGET_VIDEO_MODEL,
     // targetVideoModel: form?.targetVideoModel ?? task.targetVideoModel ?? DEFAULT_TARGET_VIDEO_MODEL,
     referenceVideoUrl: form?.referenceVideoUrl ?? task.referenceVideoUrl ?? "",
-    productImageUrlsText: joinUrls(form?.productImageUrls),
-    characterImageUrlsText: joinUrls(form?.characterImageUrls),
-    audioUrl: form?.audioUrl ?? "",
-    productInfo: form?.productInfo ?? "",
-    voiceoverScript: form?.voiceoverScript ?? "",
-    direction: form?.direction ?? "",
-    // 当前后端没有独立的可编辑 prompt 保存字段，这里先承接本地编辑态。
-    editablePrompt: task.generatedPrompt ?? "",
+    productImageUrlsText: joinUrls(form?.productImageUrls ?? task.productImageUrls),
+    characterImageUrlsText: joinUrls(form?.characterImageUrls ?? task.characterImageUrls),
+    audioUrl: form?.audioUrl ?? task.audioUrl ?? "",
+    productInfo: firstNonEmptyText(form?.productInfo, task.productInfo),
+    voiceoverScript: firstNonEmptyText(form?.voiceoverScript, task.voiceoverScript),
+    direction: firstNonEmptyText(form?.direction, task.direction),
+    // 后端使用 prompt 字段承接最终视频生成提示词，前端用 editablePrompt 保存本地编辑态。
+    editablePrompt: getVideoRemixTaskPrompt(task),
     generationDuration: form?.generationDuration ?? task.duration ?? 15,
   };
 }
@@ -72,6 +80,7 @@ export function mapFormValuesToSavePayload(values: VideoRemixTaskFormValues): Vi
     productInfo: normalizeText(values.productInfo),
     voiceoverScript: normalizeText(values.voiceoverScript),
     direction: normalizeText(values.direction),
+    prompt: normalizeText(values.editablePrompt),
     generationDuration: values.generationDuration,
   };
 }

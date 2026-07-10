@@ -2,6 +2,18 @@ import request, { type DataRequestClient, type RequestConfig } from "../../../ut
 import { toUploadFormData, uploadConfig } from "../../shared/utils";
 import type { UploadRespVO } from "./types";
 
+export const AUDIO_UPLOAD_ACCEPT = ".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3";
+
+const SUPPORTED_AUDIO_EXTENSIONS = new Set(["wav", "mp3"]);
+const SUPPORTED_AUDIO_MIME_TYPES = new Set([
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
+  "audio/vnd.wave",
+  "audio/mpeg",
+  "audio/mp3",
+]);
+
 function uploadFile(
   url: string,
   file: File | Blob,
@@ -13,6 +25,22 @@ function uploadFile(
     ...uploadConfig(),
     ...config,
   });
+}
+
+function getUploadFilename(file: File | Blob, filename?: string) {
+  return filename || (file instanceof File ? file.name : "");
+}
+
+export function isSupportedAudioUploadFile(file: File | Blob, filename?: string) {
+  const uploadFilename = getUploadFilename(file, filename).trim().toLowerCase();
+  const extension = uploadFilename.includes(".") ? uploadFilename.split(".").pop() : "";
+  const mimeType = file.type.trim().toLowerCase();
+
+  if (extension && SUPPORTED_AUDIO_EXTENSIONS.has(extension)) {
+    return true;
+  }
+
+  return Boolean(mimeType && SUPPORTED_AUDIO_MIME_TYPES.has(mimeType));
 }
 
 /**
@@ -30,6 +58,10 @@ export function uploadAudio(
   client?: DataRequestClient,
   config?: RequestConfig,
 ) {
+  if (!isSupportedAudioUploadFile(file, filename)) {
+    return Promise.reject(new Error("仅支持上传 wav、mp3 格式的音频文件"));
+  }
+
   return uploadFile("/uploads/audio", file, filename, client, config);
 }
 

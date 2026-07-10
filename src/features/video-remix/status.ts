@@ -79,6 +79,7 @@ function inferResultState(task: Partial<VideoRemixTask>, tone: VideoRemixStatusT
 export function getVideoRemixTaskStatusMeta(task: Partial<VideoRemixTask>): VideoRemixTaskStatusMeta {
   const tone = inferTone(task);
   const resultState = inferResultState(task, tone);
+  const hasPrompt = Boolean(task.generatedPrompt ?? task.prompt);
 
   return {
     label: task.statusLabel?.trim() || `状态 ${task.status ?? "-"}`,
@@ -87,8 +88,8 @@ export function getVideoRemixTaskStatusMeta(task: Partial<VideoRemixTask>): Vide
     background: tonePalette[tone].background,
     resultState,
     canRefresh: tone === "processing" || tone === "failed" || !task.videoUrl,
-    canCheckPrompt: Boolean(task.generatedPrompt),
+    canCheckPrompt: hasPrompt,
     canGeneratePrompt: !task.videoUrl,
-    canGenerateVideo: Boolean(task.generatedPrompt) && !task.videoUrl,
+    canGenerateVideo: hasPrompt && !task.videoUrl,
   };
 }

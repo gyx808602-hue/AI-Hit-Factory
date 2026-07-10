@@ -1,5 +1,5 @@
 import request from "../../../utils/request";
-import { noAuth, silentError } from "../../shared/utils";
+import { noAuth, silentError, skipAuthRefresh } from "../../shared/utils";
 import type {
   AuthenticationToken,
   CaptchaInfo,
@@ -43,7 +43,11 @@ export function refreshToken(refreshTokenValue: string): Promise<AuthenticationT
   return request.post<AuthenticationToken>(
     "/auth/refresh",
     { refreshToken: refreshTokenValue },
-    noAuth(),
+    {
+      ...noAuth(),
+      ...silentError(),
+      ...skipAuthRefresh(),
+    },
   );
 }
 

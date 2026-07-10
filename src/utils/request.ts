@@ -68,6 +68,8 @@ export type DataRequestClient = Omit<
 };
 
 const retriedConfigs = new WeakSet<InternalAxiosRequestConfig>();
+const AUTH_EXPIRED_MESSAGE = "登录已过期，请重新登录";
+const AUTH_EXPIRED_DEDUPE_WINDOW = 1500;
 
 function isBinaryResponse(response: AxiosResponse) {
   return response.config.responseType === "blob" || response.config.responseType === "arraybuffer";
@@ -99,6 +101,22 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
   const getRefreshToken = options.getRefreshToken ?? AuthStorage.getRefreshToken;
   const onAuthExpired = options.onAuthExpired ?? redirectToLogin;
   const setTokenPair = options.setTokenPair ?? AuthStorage.setTokenPair.bind(AuthStorage);
+  let lastAuthExpired: { message: string; time: number } | null = null;
+
+  async function notifyAuthExpired(message = AUTH_EXPIRED_MESSAGE) {
+    const now = Date.now();
+
+    if (
+      lastAuthExpired &&
+      lastAuthExpired.message === message &&
+      now - lastAuthExpired.time < AUTH_EXPIRED_DEDUPE_WINDOW
+    ) {
+      return;
+    }
+
+    lastAuthExpired = { message, time: now };
+    await onAuthExpired(message);
+  }
 
   const client = axios.create({
     adapter: options.adapter,
@@ -161,8 +179,33 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
         );
       }
 
+      if ((response.config as RequestConfig | undefined)?.skipAuthRefresh) {
+        return Promise.reject(
+          new RequestBusinessError(code, message, response.data?.data),
+        );
+      }
+
+      if (isAccessTokenExpiredCode(code)) {
+        const config = response.config;
+
+        if (!config || retriedConfigs.has(config as InternalAxiosRequestConfig)) {
+          await notifyAuthExpired();
+          return Promise.reject(new Error("Token Invalid"));
+        }
+
+        retriedConfigs.add(config as InternalAxiosRequestConfig);
+
+        try {
+          await refreshAccessToken();
+          return client(config);
+        } catch {
+          await notifyAuthExpired();
+          return Promise.reject(new Error("Token Invalid"));
+        }
+      }
+
       if (isTokenInvalidOrExpiredCode(code)) {
-        await onAuthExpired(message);
+        await notifyAuthExpired(message);
         return Promise.reject(new Error("Token Invalid"));
       }
 
@@ -186,16 +229,16 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
       const code = getBusinessCode(response.data);
       const message = getBusinessMessage(response.data, "请求失败");
 
-      if (isTokenInvalidOrExpiredCode(code)) {
-        await onAuthExpired(message);
-        return Promise.reject(
-          new Error("Token Invalid"),
-        );
-      }
-
       if ((config as RequestConfig | undefined)?.skipAuthRefresh) {
         return Promise.reject(
           new RequestBusinessError(code, message, response.data?.data),
+        );
+      }
+
+      if (isTokenInvalidOrExpiredCode(code)) {
+        await notifyAuthExpired(message);
+        return Promise.reject(
+          new Error("Token Invalid"),
         );
       }
 
@@ -208,7 +251,7 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
 
       if (isAccessTokenExpiredCode(code)) {
         if (!config || retriedConfigs.has(config as InternalAxiosRequestConfig)) {
-          await onAuthExpired("登录已过期，请重新登录");
+          await notifyAuthExpired();
           return Promise.reject(new Error("Token Invalid"));
         }
 
@@ -218,13 +261,13 @@ export function createRequestClient(options: RequestClientOptions = {}): DataReq
           await refreshAccessToken();
           return client(config);
         } catch {
-          await onAuthExpired("登录已过期，请重新登录");
+          await notifyAuthExpired();
           return Promise.reject(new Error("Token Invalid"));
         }
       }
 
       if (code === ApiCode.refreshTokenInvalid) {
-        await onAuthExpired("登录已过期，请重新登录");
+        await notifyAuthExpired();
         return Promise.reject(new Error("Token Invalid"));
       }
 

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+coverage
+
+# VCS and local editor state
+.git
+.gitignore
+.vscode
+.idea
+
+# Local agent/tooling metadata
+.agents
+.codex
+.kilo
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.cache
+.vite
+
+# Local environment files.
+# Keep .env.production available for Vite production builds.
+.env
+.env.local
+.env.development
+.env.test
+
+# Project planning and generated documentation are not required to build the app.
+doc
+docs
+openspec
+default.md
+
+# Docker metadata does not need to be copied into the build context filesystem.
+Dockerfile
+.dockerignore

@@ -36,4 +36,16 @@ describe("video-remix status helpers", () => {
     expect(meta.tone).toBe("failed");
     expect(meta.resultState).toBe("failed");
   });
+
+  it("allows prompt actions when backend returns prompt field", () => {
+    const meta = getVideoRemixTaskStatusMeta({
+      id: 1,
+      name: "任务",
+      status: 1,
+      prompt: "backend prompt",
+    });
+
+    expect(meta.canCheckPrompt).toBe(true);
+    expect(meta.canGenerateVideo).toBe(true);
+  });
 });

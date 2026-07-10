@@ -18,6 +18,7 @@ import type {
   DigitalPersonVideoQuery,
 } from "../../api/aigc/digital-person-videos/types";
 import type { Id } from "../../api/shared/types";
+import { useGuardedMutation } from "../../shared/hooks/useGuardedMutation";
 
 export const digitalHumanVideoQueryKeys = {
   all: () => ["digital-human-videos"] as const,
@@ -87,7 +88,7 @@ export function useDigitalHumanVideoDetail(id?: Id) {
 export function useCreateDigitalHumanVideoMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (payload: DigitalPersonVideoCreateRequest) => createDigitalPersonVideo(payload),
     onSuccess: async (createdTask) => {
       queryClient.setQueryData(digitalHumanVideoQueryKeys.detail(createdTask.id), createdTask);
@@ -95,13 +96,13 @@ export function useCreateDigitalHumanVideoMutation() {
         queryKey: digitalHumanVideoQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useDeleteDigitalHumanVideoMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: async (id: Id) => {
       await deleteDigitalPersonVideo(id);
       return id;
@@ -114,17 +115,17 @@ export function useDeleteDigitalHumanVideoMutation() {
         queryKey: digitalHumanVideoQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useRefreshDigitalHumanVideoMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (id: Id) => refreshDigitalPersonVideo(id),
     onSuccess: (nextTask) => {
       queryClient.setQueryData(digitalHumanVideoQueryKeys.detail(nextTask.id), nextTask);
       mergeIntoListCaches(queryClient, nextTask);
     },
-  });
+  }));
 }

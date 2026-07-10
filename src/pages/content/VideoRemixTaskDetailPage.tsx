@@ -21,7 +21,7 @@ import {
   UploadCloud,
   Video,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   generateVideoRemixTaskPrompt,
@@ -33,9 +33,15 @@ import {
   generateVideoRemixTaskVoiceoverScript,
 } from '../../api/aigc/video-remix-tasks'
 import type { VideoRemixTask } from '../../api/aigc/video-remix-tasks/types'
-import { uploadAudio, uploadImage, uploadVideo } from '../../api/aigc/uploads'
+import {
+  AUDIO_UPLOAD_ACCEPT,
+  uploadAudio,
+  uploadImage,
+  uploadVideo,
+} from '../../api/aigc/uploads'
 import {
   clearVideoRemixTaskDraft,
+  getVideoRemixTaskPrompt,
   mapFormValuesToSavePayload,
   mapTaskDetailToFormValues,
   readVideoRemixTaskDraft,
@@ -61,6 +67,7 @@ import {
 import { getVideoRemixTaskStatusMeta } from '../../features/video-remix/status'
 import { PageShell } from '../../shared/components/PageShell'
 import { StatusPill } from '../../shared/components/StatusPill'
+import { useGuardedMutation } from '../../shared/hooks/useGuardedMutation'
 
 const detailQueryKey = (taskId: string) => ['video-remix-task-detail', taskId]
 const materialsStepRequiredFields: Array<keyof VideoRemixTaskFormValues> = [
@@ -68,6 +75,11 @@ const materialsStepRequiredFields: Array<keyof VideoRemixTaskFormValues> = [
   'productInfo',
   'voiceoverScript',
   'direction',
+]
+const aiGenerateRequiredFields: Array<keyof VideoRemixTaskFormValues> = [
+  'name',
+  'referenceVideoUrl',
+  'productImageUrlsText',
 ]
 const promptStepRequiredFields: Array<keyof VideoRemixTaskFormValues> = [
   'editablePrompt',
@@ -134,6 +146,59 @@ function mergeTaskDetailPreservingGeneratedState(
   }
 }
 
+const contentDirectionFields = [
+  'productInfo',
+  'voiceoverScript',
+  'direction',
+] as const
+type ContentDirectionField = (typeof contentDirectionFields)[number]
+
+function mergeContentDirectionValues<
+  T extends Partial<Record<ContentDirectionField, string>>,
+>(nextValues: T, previousValues: Partial<Record<ContentDirectionField, string>>) {
+  const mergedValues = { ...nextValues }
+
+  contentDirectionFields.forEach((field) => {
+    if (!mergedValues[field] && previousValues[field]) {
+      mergedValues[field] = previousValues[field]
+    }
+  })
+
+  return mergedValues
+}
+
+function mergeFormValuesPreservingContentDirection(
+  nextValues: VideoRemixTaskFormValues,
+  previousValues: VideoRemixTaskFormValues,
+) {
+  return mergeContentDirectionValues(nextValues, previousValues)
+}
+
+function resolveGeneratedContentValue(
+  data: VideoRemixTask | string | null | undefined,
+  field: ContentDirectionField,
+  fallback: string,
+) {
+  if (typeof data === 'string') {
+    return data
+  }
+
+  const formValue = data?.form?.[field]
+  return formValue && formValue.trim() ? formValue : data?.[field] ?? fallback
+}
+
+function getContentDirectionSnapshot(
+  getValue: (field: ContentDirectionField) => unknown,
+) {
+  return contentDirectionFields.reduce(
+    (snapshot, field) => ({
+      ...snapshot,
+      [field]: String(getValue(field) ?? ''),
+    }),
+    {} as Record<ContentDirectionField, string>,
+  )
+}
+
 function buildPromptGenerationState(
   task?: Partial<VideoRemixTask> | null,
   previousState?: PromptGenerationState | null,
@@ -165,6 +230,12 @@ export function VideoRemixTaskDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [form] = Form.useForm<VideoRemixTaskFormValues>()
+  const latestContentDirectionRef = useRef<Record<ContentDirectionField, string>>({
+    productInfo: '',
+    voiceoverScript: '',
+    direction: '',
+  })
+  const latestEditablePromptRef = useRef('')
   const [currentStep, setCurrentStep] = useState<DetailStep>('materials')
   const [actionError, setActionError] = useState('')
   const [actionSuccess, setActionSuccess] = useState('')
@@ -190,16 +261,31 @@ export function VideoRemixTaskDetailPage() {
     refetchInterval: promptGenerationState?.active ? 5000 : false,
   })
 
+  function updateLatestContentDirection(
+    values: Partial<Record<ContentDirectionField, string>>,
+  ) {
+    latestContentDirectionRef.current = {
+      ...latestContentDirectionRef.current,
+      ...values,
+    }
+  }
+
   useEffect(() => {
     if (!detailQuery.data || !taskId) {
       return
     }
 
     const draft = readVideoRemixTaskDraft(taskId)
-    form.setFieldsValue({
-      ...mapTaskDetailToFormValues(detailQuery.data),
-      ...draft,
-    })
+    const nextValues = mergeContentDirectionValues(
+      {
+        ...mapTaskDetailToFormValues(detailQuery.data),
+        ...draft,
+      },
+      latestContentDirectionRef.current,
+    )
+    form.setFieldsValue(nextValues)
+    updateLatestContentDirection(nextValues)
+    latestEditablePromptRef.current = nextValues.editablePrompt ?? ''
 
     if (promptGenerationState) {
       setPromptGenerationState((currentState) =>
@@ -279,9 +365,7 @@ export function VideoRemixTaskDetailPage() {
       throw new Error('任务 ID 不存在')
     }
 
-    const currentEditablePrompt = String(
-      form.getFieldValue('editablePrompt') ?? '',
-    )
+    const currentEditablePrompt = String(form.getFieldValue('editablePrompt') ?? '')
     if (fieldNames?.length) {
       await form.validateFields(fieldNames as string[])
     } else {
@@ -289,6 +373,9 @@ export function VideoRemixTaskDetailPage() {
     }
 
     const fullValues = form.getFieldsValue(true) as VideoRemixTaskFormValues
+    const nextEditablePrompt = String(
+      fullValues.editablePrompt ?? currentEditablePrompt,
+    )
     const nextTask = await saveVideoRemixTaskForm(
       taskId,
       mapFormValuesToSavePayload(fullValues),
@@ -298,10 +385,20 @@ export function VideoRemixTaskDetailPage() {
 
     mergeTaskIntoCache(queryClient, taskId, mergedTask)
     clearVideoRemixTaskDraft(taskId)
+    const nextFormValues = mergeFormValuesPreservingContentDirection(
+      mapTaskDetailToFormValues(mergedTask),
+      {
+        ...fullValues,
+        ...latestContentDirectionRef.current,
+      },
+    )
     form.setFieldsValue({
-      ...mapTaskDetailToFormValues(mergedTask),
-      editablePrompt: currentEditablePrompt || mergedTask.generatedPrompt || '',
+      ...nextFormValues,
+      editablePrompt: nextEditablePrompt || getVideoRemixTaskPrompt(mergedTask),
     })
+    latestEditablePromptRef.current =
+      nextEditablePrompt || getVideoRemixTaskPrompt(mergedTask)
+    updateLatestContentDirection(nextFormValues)
     setActionError('')
 
     return mergedTask
@@ -348,30 +445,52 @@ export function VideoRemixTaskDetailPage() {
       throw new Error('任务 ID 不存在')
     }
     try {
+      const contentDirectionSnapshot = getContentDirectionSnapshot((field) =>
+        form.getFieldValue(field) ?? latestContentDirectionRef.current[field],
+      )
+      await saveCurrentFormValues(aiGenerateRequiredFields)
+      const restoredContentDirection = mergeContentDirectionValues(
+        getContentDirectionSnapshot((field) => form.getFieldValue(field)),
+        contentDirectionSnapshot,
+      )
+      form.setFieldsValue(restoredContentDirection)
+      updateLatestContentDirection(restoredContentDirection)
+
       if (field === 'productInfo') {
-        console.log('productInfo',form.getFieldsValue(true))
-        const fullValues = form.getFieldsValue(true) as VideoRemixTaskFormValues
-        await saveVideoRemixTaskForm(
-          taskId,
-          mapFormValuesToSavePayload(fullValues),
-        )
         setTaskProductInfoLoading(true)
         const data = await generateVideoRemixTaskProductInfo(taskId)
-        form.setFieldValue('productInfo', data ?? '')
+        const productInfo = resolveGeneratedContentValue(
+          data,
+          'productInfo',
+          String(
+            form.getFieldValue('productInfo') ??
+              latestContentDirectionRef.current.productInfo ??
+              '',
+          ),
+        )
+        form.setFieldValue('productInfo', productInfo)
+        updateLatestContentDirection({ productInfo })
       }
       if (field === 'voiceoverScript') {
-        console.log('voiceoverScript',form.getFieldsValue(true))
-          const fullValues = form.getFieldsValue(true) as VideoRemixTaskFormValues
-        await saveVideoRemixTaskForm(
-          taskId,
-          mapFormValuesToSavePayload(fullValues),
-        )
         setTaskVoiceoverScriptLoading(true)
         const data = await generateVideoRemixTaskVoiceoverScript(taskId)
-        form.setFieldValue('voiceoverScript', data ?? '')
+        const voiceoverScript = resolveGeneratedContentValue(
+          data,
+          'voiceoverScript',
+          String(
+            form.getFieldValue('voiceoverScript') ??
+              latestContentDirectionRef.current.voiceoverScript ??
+              '',
+          ),
+        )
+        form.setFieldValue('voiceoverScript', voiceoverScript)
+        updateLatestContentDirection({ voiceoverScript })
       }
     } catch (error) {
-      console.log(error)
+      if (error instanceof Error && error.message) {
+        setActionSuccess('')
+        setActionError(error.message)
+      }
     } finally {
       setTaskProductInfoLoading(false)
       setTaskVoiceoverScriptLoading(false)
@@ -380,7 +499,7 @@ export function VideoRemixTaskDetailPage() {
     // message.info(`${fieldLabel}的 AI 自动生成功能待接入，后续会结合已上传素材自动识别生成。`)
   }
 
-  const saveMutation = useMutation({
+  const saveMutation = useGuardedMutation(useMutation({
     mutationFn: async (values: VideoRemixTaskFormValues) => {
       form.setFieldsValue(values)
       return saveCurrentFormValues()
@@ -392,9 +511,9 @@ export function VideoRemixTaskDetailPage() {
       setActionSuccess('')
       setActionError(error.message)
     },
-  })
+  }))
 
-  const actionMutation = useMutation({
+  const actionMutation = useGuardedMutation(useMutation({
     mutationFn: async (action: TaskAction) => {
       setPendingAction(action)
 
@@ -428,8 +547,10 @@ export function VideoRemixTaskDetailPage() {
       const mergedTask = mergeTaskDetailPreservingGeneratedState(cachedTask, nextTask)
 
       if (action === 'generate-prompt') {
-        setPromptGenerationState((currentState) =>
-          buildPromptGenerationState(mergedTask, currentState),
+        setPromptGenerationState(
+          getVideoRemixTaskPrompt(mergedTask)
+            ? null
+            : buildPromptGenerationState(mergedTask, null),
         )
       }
 
@@ -455,7 +576,7 @@ export function VideoRemixTaskDetailPage() {
       setActionSuccess('')
       setActionError(error.message)
     },
-  })
+  }))
 
   async function handleUploadFiles(
     files: File[],
@@ -512,8 +633,7 @@ export function VideoRemixTaskDetailPage() {
     [characterImageUrlsText],
   )
   const promptGenerationInProgress =
-    pendingAction === 'generate-prompt' ||
-    promptGenerationState?.active === true
+    pendingAction === 'generate-prompt'
   const promptProgressPercent = promptGenerationState?.progress ?? 0
   const shouldShowPromptProgress =
     pendingAction === 'generate-prompt' || promptGenerationState !== null
@@ -522,6 +642,14 @@ export function VideoRemixTaskDetailPage() {
     task?.form?.referenceVideoUrl ||
     task?.referenceVideoUrl ||
     ''
+  const taskPrompt = task ? getVideoRemixTaskPrompt(task) : ''
+  const availablePrompt = String(
+    editablePrompt ||
+      form.getFieldValue('editablePrompt') ||
+      latestEditablePromptRef.current ||
+      taskPrompt ||
+      '',
+  ).trim()
 
   if (!taskId) {
     return <PageMissingAlert text="缺少任务 ID" />
@@ -558,6 +686,26 @@ export function VideoRemixTaskDetailPage() {
         form={form}
         className="flex h-full min-h-0 flex-col"
         layout="vertical"
+        onValuesChange={(changedValues) => {
+          if (Object.prototype.hasOwnProperty.call(changedValues, 'editablePrompt')) {
+            latestEditablePromptRef.current = String(changedValues.editablePrompt ?? '')
+          }
+
+          const contentDirectionChanges = contentDirectionFields.reduce(
+            (changes, field) => {
+              if (Object.prototype.hasOwnProperty.call(changedValues, field)) {
+                changes[field] = String(changedValues[field] ?? '')
+              }
+
+              return changes
+            },
+            {} as Partial<Record<ContentDirectionField, string>>,
+          )
+
+          if (Object.keys(contentDirectionChanges).length) {
+            updateLatestContentDirection(contentDirectionChanges)
+          }
+        }}
         onFinish={(values) => saveMutation.mutate(values)}
       >
         <div
@@ -873,7 +1021,7 @@ export function VideoRemixTaskDetailPage() {
                           参考音频
                           <UploadTrigger
                             testId="video-remix-audio-upload-input"
-                            accept="audio/*"
+                            accept={AUDIO_UPLOAD_ACCEPT}
                             onUpload={(files) =>
                               handleUploadFiles(
                                 files,
@@ -935,21 +1083,22 @@ export function VideoRemixTaskDetailPage() {
                   <SectionTitle title="内容方向" />
                   <Space orientation="vertical" size={16} className="flex">
                     <div>
+                      <div className="mb-2 flex w-full items-center justify-between gap-3">
+                        <span className="text-[14px] font-medium text-[var(--text-primary)]">
+                          产品信息
+                        </span>
+                        <Button
+                          className="shrink-0"
+                          type="dashed"
+                          htmlType="button"
+                          loading={taskProductInfoLoading}
+                          icon={<Sparkles size={14} />}
+                          onClick={() => handleAiGenerate('productInfo')}
+                        >
+                          AI 自动生成
+                        </Button>
+                      </div>
                       <Form.Item
-                        label={
-                          <div className="flex w-full items-center justify-between gap-3">
-                            <span>产品信息</span>
-                            <Button
-                              className="shrink-0"
-                              type="dashed"
-                              loading={taskProductInfoLoading}
-                              icon={<Sparkles size={14} />}
-                              onClick={() => handleAiGenerate('productInfo')}
-                            >
-                              AI 自动生成
-                            </Button>
-                          </div>
-                        }
                         name="productInfo"
                         rules={[{ required: true, message: '请填写产品信息' }]}
                       >
@@ -966,23 +1115,24 @@ export function VideoRemixTaskDetailPage() {
                       className="grid w-full gap-6 xl:grid-cols-2"
                     >
                       <div className="min-w-0">
+                        <div className="mb-2 flex w-full items-center justify-between gap-3">
+                          <span className="text-[14px] font-medium text-[var(--text-primary)]">
+                            口播文案
+                          </span>
+                          <Button
+                            className="shrink-0"
+                            type="dashed"
+                            htmlType="button"
+                            icon={<Sparkles size={14} />}
+                            loading={taskVoiceoverScriptLoading}
+                            onClick={() =>
+                              handleAiGenerate('voiceoverScript')
+                            }
+                          >
+                            AI 自动生成
+                          </Button>
+                        </div>
                         <Form.Item
-                          label={
-                            <div className="flex w-full items-center justify-between gap-3">
-                              <span>口播文案</span>
-                              <Button
-                                className="shrink-0"
-                                type="dashed"
-                                icon={<Sparkles size={14} />}
-                                loading={taskVoiceoverScriptLoading}
-                                onClick={() =>
-                                  handleAiGenerate('voiceoverScript')
-                                }
-                              >
-                                AI 自动生成
-                              </Button>
-                            </div>
-                          }
                           name="voiceoverScript"
                           rules={[
                             { required: true, message: '请填写口播文案' },
@@ -997,13 +1147,13 @@ export function VideoRemixTaskDetailPage() {
                       </div>
 
                       <div className="min-w-0">
+                        <div className="mb-2 flex w-full items-center justify-between gap-3">
+                          <span className="text-[14px] font-medium text-[var(--text-primary)]">
+                            复刻方向
+                          </span>
+                          <span className="inline-flex h-[32px] w-[108px] shrink-0" />
+                        </div>
                         <Form.Item
-                          label={
-                            <div className="flex w-full items-center justify-between gap-3">
-                              <span>复刻方向</span>
-                              <span className="inline-flex h-[32px] w-[108px] shrink-0" />
-                            </div>
-                          }
                           name="direction"
                           rules={[
                             { required: true, message: '请填写复刻方向' },
@@ -1055,7 +1205,7 @@ export function VideoRemixTaskDetailPage() {
                       disabled={promptGenerationInProgress}
                       rows={12}
                       placeholder={
-                        task.generatedPrompt
+                        taskPrompt
                           ? undefined
                           : '当前还没有生成提示词,请先生成提示词，再决定是否需要调整。'
                       }
@@ -1071,7 +1221,7 @@ export function VideoRemixTaskDetailPage() {
                         提示词状态
                       </div>
                       <div>状态：{statusMeta.label}</div>
-                      <div>进度：{task.progress ?? 0}%</div>
+                      {/* <div>进度：{task.progress ?? 0}%</div> */}
                       <div>Prompt 服务：{task.promptProvider || '-'}</div>
                       <div>
                         校验结果：
@@ -1085,7 +1235,7 @@ export function VideoRemixTaskDetailPage() {
                   </Card>
                 </div>
 
-                {shouldShowPromptProgress ? (
+                {/* {shouldShowPromptProgress ? (
                   <div
                     data-testid="video-remix-prompt-progress"
                     className="rounded-xl border border-[var(--line-subtle)] bg-[var(--muted-bg)] p-4"
@@ -1098,7 +1248,7 @@ export function VideoRemixTaskDetailPage() {
                       status={promptGenerationInProgress ? 'active' : 'normal'}
                     />
                   </div>
-                ) : null}
+                ) : null} */}
 
                 {/* {!editablePrompt ? (
                   <Alert
@@ -1180,7 +1330,7 @@ export function VideoRemixTaskDetailPage() {
                     生成 Prompt
                   </Button> */}
                   <Button
-                    disabled={!task.generatedPrompt}
+                    disabled={!availablePrompt}
                     loading={pendingAction === 'generate-video'}
                     onClick={() => actionMutation.mutate('generate-video')}
                   >

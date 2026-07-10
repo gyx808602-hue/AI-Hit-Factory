@@ -151,6 +151,92 @@ describe("digital human hooks", () => {
     });
   });
 
+  it("guards duplicate create submissions while the first request is pending", async () => {
+    const created: DigitalPerson = {
+      id: "human-guarded",
+      name: "Mia",
+      status: 0,
+      progress: 0,
+    };
+    const payload: DigitalPersonCreateRequest = {
+      name: "Mia",
+      trainType: "both",
+      language: "cn",
+      errorSkip: false,
+      fileUrl: "https://example.com/train.mp4",
+    };
+    let resolveCreate: (value: DigitalPerson) => void = () => undefined;
+
+    apiMocks.createDigitalPerson.mockImplementation(
+      () =>
+        new Promise<DigitalPerson>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    const { result } = renderHook(() => useCreateDigitalHumanMutation(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    result.current.mutate(payload);
+    result.current.mutate(payload);
+
+    await waitFor(() => {
+      expect(apiMocks.createDigitalPerson).toHaveBeenCalled();
+    });
+
+    expect(apiMocks.createDigitalPerson).toHaveBeenCalledTimes(1);
+
+    resolveCreate(created);
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+  });
+
+  it("allows create submission again after a guarded request fails", async () => {
+    const created: DigitalPerson = {
+      id: "human-retry",
+      name: "Mia",
+      status: 0,
+      progress: 0,
+    };
+    const payload: DigitalPersonCreateRequest = {
+      name: "Mia",
+      trainType: "both",
+      language: "cn",
+      errorSkip: false,
+      fileUrl: "https://example.com/train.mp4",
+    };
+
+    apiMocks.createDigitalPerson
+      .mockRejectedValueOnce(new Error("create failed"))
+      .mockResolvedValueOnce(created);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    const { result } = renderHook(() => useCreateDigitalHumanMutation(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await expect(result.current.mutateAsync(payload)).rejects.toThrow("create failed");
+    await expect(result.current.mutateAsync(payload)).resolves.toEqual(created);
+
+    expect(apiMocks.createDigitalPerson).toHaveBeenCalledTimes(2);
+  });
+
   it("deletes a digital human and clears the detail cache", async () => {
     apiMocks.deleteDigitalPerson.mockResolvedValue(undefined);
 

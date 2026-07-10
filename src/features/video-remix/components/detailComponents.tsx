@@ -1,4 +1,4 @@
-﻿import { Alert, Button, Card, Empty, Image, Tag, Upload } from "antd";
+import { Alert, Button, Card, Empty, Image, Tag, Upload } from "antd";
 import type { UploadProps } from "antd";
 import type { ReactNode } from "react";
 
@@ -189,7 +189,7 @@ export function StepNavigation({
             onClick={() => onChange(step.key)}
           >
             <div className="mb-1 text-[12px] font-semibold text-[#2563EB]">
-              姝ラ {index + 1}
+              步骤 {index + 1}
             </div>
             <div className="text-[14px] font-semibold text-[var(--text-primary)]">
               {step.title}

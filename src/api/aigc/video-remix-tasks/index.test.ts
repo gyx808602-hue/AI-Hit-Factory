@@ -116,14 +116,14 @@ describe("video remix tasks api", () => {
     await deleteVideoRemixTask("task-1", client);
 
     expect(seen.map((item) => `${item.method}:${item.url}`)).toEqual([
-      "post:/user-api/aigc/video-remix-tasks",
-      "get:/user-api/aigc/video-remix-tasks/task-1",
-      "put:/user-api/aigc/video-remix-tasks/task-1/form",
-      "post:/user-api/aigc/video-remix-tasks/task-1/check-prompt",
-      "post:/user-api/aigc/video-remix-tasks/task-1/generate-prompt",
-      "post:/user-api/aigc/video-remix-tasks/task-1/generate-video",
-      "get:/user-api/aigc/video-remix-tasks/task-1/refresh",
-      "delete:/user-api/aigc/video-remix-tasks/task-1",
+      "post:/video-remix-tasks",
+      "get:/video-remix-tasks/task-1",
+      "put:/video-remix-tasks/task-1/form",
+      "post:/video-remix-tasks/task-1/check-prompt",
+      "post:/video-remix-tasks/task-1/generate-prompt",
+      "post:/video-remix-tasks/task-1/generate-video",
+      "get:/video-remix-tasks/task-1/refresh",
+      "delete:/video-remix-tasks/task-1",
     ]);
   });
 });

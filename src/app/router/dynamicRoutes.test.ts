@@ -9,20 +9,20 @@ describe("dynamicRoutes", () => {
   it("maps known backend components into renderable routes and menus", () => {
     const routes: RouteItem[] = [
       {
-        path: "/dashboard",
-        component: "dashboard/index",
-        meta: { title: "Dashboard", icon: "LayoutDashboard", keepAlive: true },
+        path: "/viral-remix/tasks",
+        component: "content/viral-remix/tasks/index",
+        meta: { title: "追分任务", icon: "ListTodo", keepAlive: true },
       },
     ];
 
     const result = buildDynamicRouteState(routes);
 
-    expect(result.routes.map((route) => route.key)).toEqual(["workspace.dashboard"]);
+    expect(result.routes.map((route) => route.key)).toEqual(["content.viralRemixTasks"]);
     expect(
       result.menuItems
         .filter((item) => item.kind === "route")
         .map((item) => item.route.key),
-    ).toEqual(["workspace.dashboard"]);
+    ).toEqual(["content.viralRemixTasks"]);
     expect(result.routes[0]?.meta.cache).toBe(true);
   });
 
@@ -45,19 +45,19 @@ describe("dynamicRoutes", () => {
   it("keeps hidden routes accessible while excluding them from menus", () => {
     const routes: RouteItem[] = [
       {
-        path: "/assets",
-        component: "workspace/assets/index",
-        meta: { title: "Assets", hidden: true },
+        path: "/viral-remix/tasks",
+        component: "content/viral-remix/tasks/index",
+        meta: { title: "追分任务", hidden: true },
       },
     ];
 
     const result = buildDynamicRouteState(routes);
 
-    expect(result.routes.map((route) => route.key)).toEqual(["workspace.assets"]);
+    expect(result.routes.map((route) => route.key)).toEqual(["content.viralRemixTasks"]);
     expect(result.menuItems).toEqual([]);
   });
 
-  it("maps workspace task records backend component into a route and menu item", () => {
+  it("filters disabled workspace backend components", () => {
     const routes: RouteItem[] = [
       {
         path: "/tasks",
@@ -68,12 +68,8 @@ describe("dynamicRoutes", () => {
 
     const result = buildDynamicRouteState(routes);
 
-    expect(result.routes.map((route) => route.key)).toEqual(["workspace.tasks"]);
-    expect(
-      result.menuItems
-        .filter((item) => item.kind === "route")
-        .map((item) => item.route.key),
-    ).toEqual(["workspace.tasks"]);
+    expect(result.routes).toEqual([]);
+    expect(result.menuItems).toEqual([]);
   });
 
   it("marks external redirects and does not register them as internal routes", () => {

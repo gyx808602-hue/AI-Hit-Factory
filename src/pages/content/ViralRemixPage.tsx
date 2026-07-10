@@ -8,6 +8,7 @@ import type { VideoRemixTask, VideoRemixTaskCreateRequest } from "../../api/aigc
 import { uploadImage, uploadVideo } from "../../api/aigc/uploads";
 import { writeVideoRemixTaskDraft } from "../../features/video-remix/form";
 import { PageShell } from "../../shared/components/PageShell";
+import { useGuardedMutation } from "../../shared/hooks/useGuardedMutation";
 
 type RemixMode = "replace-person" | "replace-product" | "imitate";
 
@@ -37,7 +38,7 @@ export function ViralRemixPage() {
   const [replaceProductImageUploading, setReplaceProductImageUploading] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const createTaskMutation = useMutation<VideoRemixTask, Error, VideoRemixTaskCreateRequest>({
+  const createTaskMutation = useGuardedMutation(useMutation<VideoRemixTask, Error, VideoRemixTaskCreateRequest>({
     mutationFn: (payload) => createVideoRemixTask(payload),
     onSuccess: (task) => {
       const taskId = String(task.id);
@@ -63,7 +64,7 @@ export function ViralRemixPage() {
     onError: (error: Error) => {
       setActionError(error.message);
     },
-  });
+  }));
 
   async function handleSourceVideoUpload(file: File) {
     setSourceVideoUploading(true);

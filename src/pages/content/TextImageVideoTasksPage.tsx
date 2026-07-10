@@ -12,6 +12,7 @@ import { getTextImageVideoTaskStatusMeta } from "../../features/text-image-video
 import { MetricCard } from "../../shared/components/MetricCard";
 import { PageShell } from "../../shared/components/PageShell";
 import { StatusPill } from "../../shared/components/StatusPill";
+import { useGuardedMutation } from "../../shared/hooks/useGuardedMutation";
 
 type StatusFilter = "all" | "0" | "2" | "3";
 
@@ -94,7 +95,7 @@ export function TextImageVideoTasksPage() {
   const pendingDeleteTaskIdRef = useRef<TextImageVideoTask["id"] | null>(null);
   const taskPageQuery = useTaskPage(statusFilter);
 
-  const deleteTaskMutation = useMutation({
+  const deleteTaskMutation = useGuardedMutation(useMutation({
     mutationFn: async (taskId: TextImageVideoTask["id"]) => {
       pendingDeleteTaskIdRef.current = taskId;
       setPendingDeleteTaskId(taskId);
@@ -110,7 +111,7 @@ export function TextImageVideoTasksPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["text-image-video", "tasks"] });
     },
-  });
+  }));
 
   const tasks = taskPageQuery.data?.records ?? [];
 

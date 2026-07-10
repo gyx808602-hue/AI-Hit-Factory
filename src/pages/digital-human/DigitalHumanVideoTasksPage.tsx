@@ -8,10 +8,11 @@ import {
   Radio,
   Select,
   Switch,
+  Upload,
   message,
 } from 'antd'
-import { Plus } from 'lucide-react'
-import { uploadAudio, uploadImage } from '../../api/aigc/uploads'
+import { Plus, Trash2, UploadCloud } from 'lucide-react'
+import { AUDIO_UPLOAD_ACCEPT, uploadAudio, uploadImage } from '../../api/aigc/uploads'
 import { useCustomisedAudioPage } from '../../features/digital-human/audio/hooks'
 import { useDigitalHumanPage } from '../../features/digital-human/hooks'
 import {
@@ -133,6 +134,14 @@ function DigitalHumanVideoCreateModal({
   onSubmit: () => void
 }) {
   const dragStateRef = useRef<DragState | null>(null)
+  const [audioUploading, setAudioUploading] = useState(false)
+  const [uploadedAudioName, setUploadedAudioName] = useState<string | null>(
+    null,
+  )
+  const [backgroundUploading, setBackgroundUploading] = useState(false)
+  const [uploadedBackgroundName, setUploadedBackgroundName] = useState<
+    string | null
+  >(null)
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
@@ -191,6 +200,56 @@ function DigitalHumanVideoCreateModal({
       startClientY: clientY,
       baseValues: values,
     }
+  }
+
+  async function handleAudioUpload(file: File) {
+    setAudioUploading(true)
+
+    try {
+      const upload = await uploadAudio(file)
+      setUploadedAudioName(file.name)
+      onChange({
+        ...values,
+        wavUrl: mapUploadResponseToWavUrl(upload),
+      })
+    } catch {
+      // 接口错误由统一 request 层提示，这里只负责恢复上传状态。
+    } finally {
+      setAudioUploading(false)
+    }
+  }
+
+  function handleRemoveAudio() {
+    setUploadedAudioName(null)
+    onChange({
+      ...values,
+      wavUrl: '',
+    })
+  }
+
+  async function handleBackgroundUpload(file: File) {
+    setBackgroundUploading(true)
+
+    try {
+      const upload = await uploadImage(file)
+      setUploadedBackgroundName(file.name)
+      onChange({
+        ...values,
+        backgroundImageUrl: mapUploadResponseToBackgroundConfig(upload),
+      })
+    } catch {
+      // 接口错误由统一 request 层提示，这里只负责恢复上传状态。
+    } finally {
+      setBackgroundUploading(false)
+    }
+  }
+
+  function handleRemoveBackgroundImage() {
+    setUploadedBackgroundName(null)
+    onChange({
+      ...values,
+      backgroundImageUrl: '',
+    })
   }
 
   return (
@@ -310,32 +369,75 @@ function DigitalHumanVideoCreateModal({
                     <div className="mb-2 text-[13px] text-[var(--text-secondary)]">
                       驱动音频
                     </div>
-                    <input
-                      data-testid="digital-human-video-audio-upload-input"
-                      type="file"
-                      accept="audio/*"
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0]
-                        if (!file) {
-                          return
-                        }
-
-                        try {
-                          const upload = await uploadAudio(file)
-                          onChange({
-                            ...values,
-                            wavUrl: mapUploadResponseToWavUrl(upload),
-                          })
-                        } catch {
-                          // 接口错误由统一 request 层提示。
-                        }
-                      }}
-                    />
                     {values.wavUrl ? (
-                      <div className="mt-2 text-[12px] text-[var(--text-secondary)]">
-                        {values.wavUrl}
+                      <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-[13px] text-[var(--text-primary)]">
+                              {uploadedAudioName || '已上传音频'}
+                            </div>
+                            <div className="text-[12px] text-[var(--text-muted)]">
+                              已上传到素材服务
+                            </div>
+                          </div>
+                          <Button
+                            size="small"
+                            danger
+                            icon={<Trash2 size={12} />}
+                            onClick={handleRemoveAudio}
+                          >
+                            删除音频
+                          </Button>
+                        </div>
+                        <audio
+                          className="w-full"
+                          controls
+                          src={values.wavUrl}
+                          data-testid="digital-human-video-audio-preview"
+                        >
+                          当前浏览器不支持音频预览
+                        </audio>
                       </div>
-                    ) : null}
+                    ) : (
+                      <Upload.Dragger
+                        accept={AUDIO_UPLOAD_ACCEPT}
+                        multiple={false}
+                        showUploadList={false}
+                        disabled={audioUploading}
+                        beforeUpload={(file) => {
+                          void handleAudioUpload(file as File)
+                          return Upload.LIST_IGNORE
+                        }}
+                      >
+                        <div className="py-5">
+                          <UploadCloud
+                            size={28}
+                            className="mx-auto mb-2 text-[#1677FF]"
+                          />
+                          <input
+                            data-testid="digital-human-video-audio-upload-input"
+                            type="file"
+                            accept={AUDIO_UPLOAD_ACCEPT}
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0]
+                              if (file) {
+                                void handleAudioUpload(file)
+                                event.target.value = ''
+                              }
+                            }}
+                          />
+                          <p className="text-[13px] text-[var(--text-secondary)]">
+                            {audioUploading
+                              ? '音频上传中...'
+                              : '点击或拖拽上传音频'}
+                          </p>
+                          <p className="text-[12px] text-[var(--text-muted)]">
+                            上传成功后会自动写入驱动音频地址
+                          </p>
+                        </div>
+                      </Upload.Dragger>
+                    )}
                     {renderFieldError(errors.wavUrl)}
                   </div>
                 )}
@@ -585,51 +687,73 @@ function DigitalHumanVideoCreateModal({
                 背景
               </div>
               <div className="space-y-3 rounded-xl border border-[var(--line-subtle)] p-4">
-                <Input
-                  aria-label="背景图 URL"
-                  placeholder="可手动输入背景图 URL"
-                  value={values.backgroundImageUrl}
-                  onChange={(event) =>
-                    onChange({
-                      ...values,
-                      backgroundImageUrl: event.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0]
-                    if (!file) {
-                      return
-                    }
-
-                    try {
-                      const upload = await uploadImage(file)
-                      onChange({
-                        ...values,
-                        backgroundImageUrl:
-                          mapUploadResponseToBackgroundConfig(upload),
-                      })
-                    } catch {
-                      // 接口错误由统一 request 层提示。
-                    }
-                  }}
-                />
-                <div className="flex justify-end">
-                  <Button
-                    size="small"
-                    onClick={() =>
-                      onChange({
-                        ...values,
-                        backgroundImageUrl: '',
-                      })
-                    }
+                {hasBackgroundImage ? (
+                  <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] text-[var(--text-primary)]">
+                          {uploadedBackgroundName || '已设置背景图'}
+                        </div>
+                        <div className="text-[12px] text-[var(--text-muted)]">
+                          已上传到素材服务
+                        </div>
+                      </div>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<Trash2 size={12} />}
+                        onClick={handleRemoveBackgroundImage}
+                      >
+                        清空背景图
+                      </Button>
+                    </div>
+                    <img
+                      data-testid="digital-human-video-background-upload-preview"
+                      src={values.backgroundImageUrl}
+                      alt="背景图上传预览"
+                      className="h-32 w-full rounded-lg border border-[var(--line-subtle)] object-cover"
+                    />
+                  </div>
+                ) : (
+                  <Upload.Dragger
+                    accept="image/*"
+                    multiple={false}
+                    showUploadList={false}
+                    disabled={backgroundUploading}
+                    beforeUpload={(file) => {
+                      void handleBackgroundUpload(file as File)
+                      return Upload.LIST_IGNORE
+                    }}
                   >
-                    清空背景图
-                  </Button>
-                </div>
+                    <div className="py-5">
+                      <UploadCloud
+                        size={28}
+                        className="mx-auto mb-2 text-[#1677FF]"
+                      />
+                      <input
+                        data-testid="digital-human-video-background-upload-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0]
+                          if (file) {
+                            void handleBackgroundUpload(file)
+                            event.target.value = ''
+                          }
+                        }}
+                      />
+                      <p className="text-[13px] text-[var(--text-secondary)]">
+                        {backgroundUploading
+                          ? '背景图上传中...'
+                          : '点击或拖拽上传背景图'}
+                      </p>
+                      <p className="text-[12px] text-[var(--text-muted)]">
+                        上传成功后会自动写入背景图地址并联动画布预览
+                      </p>
+                    </div>
+                  </Upload.Dragger>
+                )}
                 <ColorPicker
                   data-testid="digital-human-video-bg-color-picker"
                   value={values.bgColor}

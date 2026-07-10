@@ -46,11 +46,11 @@ export function isSuccessfulBusinessCode(code: string) {
 }
 
 export function isAccessTokenExpiredCode(code: string) {
-  return code === ApiCode.accessTokenInvalid;
+  return code === ApiCode.tokenInvalidOrExpired;
 }
 
 export function isTokenInvalidOrExpiredCode(code: string) {
-  return code === ApiCode.tokenInvalidOrExpired;
+  return code === ApiCode.refreshTokenInvalid;
 }
 
 export function isPasswordChangeRequiredCode(code: string) {

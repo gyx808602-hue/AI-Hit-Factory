@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getRouteByKey, routeRegistry } from "./routeRegistry";
 
 describe("routeRegistry", () => {
-  it("maps dashboard route key to a route definition", () => {
-    const route = getRouteByKey("workspace.dashboard");
+  it("maps an active content route key to a route definition", () => {
+    const route = getRouteByKey("content.viralRemixTasks");
 
-    expect(route.path).toBe("/");
-    expect(route.meta.title).toBe("工作台");
+    expect(route.path).toBe("/viral-remix/tasks");
+    expect(route.meta.hideInMenu).not.toBe(true);
   });
 
   it("contains unique route keys", () => {
@@ -67,14 +67,9 @@ describe("routeRegistry", () => {
     expect(route.meta.hideInMenu).not.toBe(true);
   });
 
-  it("registers workspace routes for task records and asset library", () => {
-    const taskRecordsRoute = getRouteByKey("workspace.tasks");
-    const assetLibraryRoute = getRouteByKey("workspace.assets");
-
-    expect(taskRecordsRoute.path).toBe("/tasks");
-    expect(taskRecordsRoute.meta.hideInMenu).not.toBe(true);
-    expect(assetLibraryRoute.path).toBe("/assets");
-    expect(assetLibraryRoute.meta.hideInMenu).not.toBe(true);
+  it("does not register disabled workspace routes", () => {
+    expect(() => getRouteByKey("workspace.tasks")).toThrow("Unknown route key: workspace.tasks");
+    expect(() => getRouteByKey("workspace.assets")).toThrow("Unknown route key: workspace.assets");
   });
 
   it("uses lazy page components so routes can be split into chunks", () => {

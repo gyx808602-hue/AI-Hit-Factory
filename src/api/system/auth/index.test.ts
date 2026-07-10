@@ -43,7 +43,11 @@ describe("system auth api", () => {
     expect(mockedPost).toHaveBeenCalledWith(
       "/auth/refresh",
       { refreshToken: "refresh-token" },
-      { headers: { Authorization: "no-auth" } },
+      {
+        headers: { Authorization: "no-auth" },
+        silentError: true,
+        skipAuthRefresh: true,
+      },
     );
   });
 });

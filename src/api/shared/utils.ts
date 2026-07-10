@@ -11,6 +11,11 @@ export function noAuth(): Pick<RequestConfig, "headers"> {
   return { headers: { Authorization: "no-auth" } };
 }
 
+// refresh 接口自身失败时不能再次触发无感刷新，否则会形成递归刷新链路。
+export function skipAuthRefresh(): Pick<RequestConfig, "skipAuthRefresh"> {
+  return { skipAuthRefresh: true };
+}
+
 // 页面已具备本地兜底能力时，可关闭全局错误提示避免重复噪音。
 export function silentError(): Pick<RequestConfig, "silentError"> {
   return { silentError: true };

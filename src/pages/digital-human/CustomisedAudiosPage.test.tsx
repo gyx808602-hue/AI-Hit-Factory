@@ -1,4 +1,4 @@
-﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Modal } from "antd";
 import { MemoryRouter } from "react-router-dom";
@@ -24,6 +24,7 @@ vi.mock("../../features/digital-human/audio/hooks", () => ({
 }));
 
 vi.mock("../../api/aigc/uploads", () => ({
+  AUDIO_UPLOAD_ACCEPT: ".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3",
   uploadAudio: pageMocks.uploadAudio,
 }));
 
@@ -264,7 +265,13 @@ describe("CustomisedAudiosPage", () => {
 
     expect(within(dialog).getByText("编辑音色")).toBeInTheDocument();
     expect(textboxes[0]).toHaveValue("瀹㈡湇濂冲０");
-    expect(textboxes[1]).toHaveValue("https://example.com/audio-1.wav");
+    expect(textboxes).toHaveLength(1);
+    expect(within(dialog).queryByText("音频地址")).not.toBeInTheDocument();
+    expect(screen.getByText("瀹㈡湇濂冲０.wav")).toBeInTheDocument();
+    expect(screen.getByTestId("customised-audio-preview")).toHaveAttribute(
+      "src",
+      "https://example.com/audio-1.wav",
+    );
   });
 
   it("refreshes and deletes a customised audio", async () => {

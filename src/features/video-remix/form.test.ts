@@ -5,7 +5,7 @@ describe("video-remix form helpers", () => {
   it("uses dreamina-seedance-2-0 as the default target model", () => {
     const values = mapTaskDetailToFormValues({
       id: 1,
-      name: "杩界垎浠诲姟",
+      name: "追爆任务",
       status: 0,
       form: {},
     });
@@ -53,6 +53,22 @@ describe("video-remix form helpers", () => {
     expect(values.editablePrompt).toBe("");
   });
 
+  it("maps top-level content direction fields into editable form values", () => {
+    const values = mapTaskDetailToFormValues({
+      id: 1,
+      name: "Remix Task",
+      status: 0,
+      productInfo: "top-level product info",
+      voiceoverScript: "top-level voiceover script",
+      direction: "top-level direction",
+      form: {},
+    });
+
+    expect(values.productInfo).toBe("top-level product info");
+    expect(values.voiceoverScript).toBe("top-level voiceover script");
+    expect(values.direction).toBe("top-level direction");
+  });
+
   it("maps form values into save payload", () => {
     const payload = mapFormValuesToSavePayload({
       name: "追爆任务",
@@ -75,6 +91,7 @@ describe("video-remix form helpers", () => {
     ]);
     expect(payload.characterImageUrls).toEqual([]);
     expect(payload.audioUrl).toBe("https://example.com/audio.mp3");
+    expect(payload.prompt).toBe("editable prompt");
     expect(payload.videoMetaSummary).toBe("");
   });
 
@@ -88,5 +105,17 @@ describe("video-remix form helpers", () => {
     });
 
     expect(values.editablePrompt).toBe("generated prompt");
+  });
+
+  it("maps backend prompt field into local editable prompt field", () => {
+    const values = mapTaskDetailToFormValues({
+      id: 1,
+      name: "追爆任务",
+      status: 1,
+      prompt: "backend prompt",
+      form: {},
+    });
+
+    expect(values.editablePrompt).toBe("backend prompt");
   });
 });

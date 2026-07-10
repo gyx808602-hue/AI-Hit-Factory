@@ -23,6 +23,7 @@ import {
 } from '../../features/video-remix/status'
 import { PageShell } from '../../shared/components/PageShell'
 import { StatusPill } from '../../shared/components/StatusPill'
+import { useGuardedMutation } from '../../shared/hooks/useGuardedMutation'
 
 const listQueryKey = ['video-remix-tasks']
 
@@ -52,14 +53,14 @@ export function VideoRemixTasksPage() {
       }),
   })
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useGuardedMutation(useMutation({
     mutationFn: (taskId: VideoRemixTask['id']) => deleteVideoRemixTask(taskId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: listQueryKey })
     },
-  })
+  }))
 
-  const createMutation = useMutation({
+  const createMutation = useGuardedMutation(useMutation({
     mutationFn: (values: CreateTaskFormValues) =>
       createVideoRemixTask({
         name: values.name.trim(),
@@ -71,7 +72,7 @@ export function VideoRemixTasksPage() {
       await queryClient.invalidateQueries({ queryKey: listQueryKey })
       navigate(`/viral-remix/tasks/${task.id}`)
     },
-  })
+  }))
 
   async function handleCreateTask() {
     try {

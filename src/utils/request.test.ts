@@ -194,14 +194,53 @@ describe("request client", () => {
     expect(notifyError).toHaveBeenCalledWith("旧密码错误");
   });
 
-  it("expires auth for C10040 http error responses when backend omits message", async () => {
+  it("refreshes token for C10040 http error responses when backend omits message", async () => {
     const notifyError = vi.fn();
     const onAuthExpired = vi.fn();
+    let accessToken = "old-access-token";
+    let refreshTokenValue = "refresh-token";
+    const seenUrls: Array<string | undefined> = [];
     const client = createRequestClient({
+      getAccessToken: () => accessToken,
+      getRefreshToken: () => refreshTokenValue,
+      setTokenPair: (tokens) => {
+        accessToken = tokens.accessToken ?? accessToken;
+        refreshTokenValue = tokens.refreshToken ?? refreshTokenValue;
+      },
       notifyError,
       onAuthExpired,
       adapter: async (config) => {
         const requestConfig = config as InternalAxiosRequestConfig;
+        seenUrls.push(requestConfig.url);
+
+        if (requestConfig.url === "/auth/refresh") {
+          return {
+            config: requestConfig,
+            data: {
+              code: "200",
+              data: {
+                tokenType: "Bearer",
+                accessToken: "new-access-token",
+                refreshToken: "new-refresh-token",
+                expiresIn: 3600,
+              },
+            },
+            headers: {},
+            status: 200,
+            statusText: "OK",
+          };
+        }
+
+        if (requestConfig.headers.Authorization === "Bearer new-access-token") {
+          return {
+            config: requestConfig,
+            data: { code: "200", data: { ok: true } },
+            headers: {},
+            status: 200,
+            statusText: "OK",
+          };
+        }
+
         const response: AxiosResponse = {
           config: requestConfig,
           data: { code: "C10040", data: null },
@@ -221,29 +260,64 @@ describe("request client", () => {
       },
     });
 
-    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    await expect(client.get("/secure")).resolves.toEqual({ ok: true });
+    expect(seenUrls).toEqual(["/secure", "/auth/refresh", "/secure"]);
     expect(notifyError).not.toHaveBeenCalled();
-    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+    expect(onAuthExpired).not.toHaveBeenCalled();
   });
 
-  it("expires auth for C10040 business responses even when http status is 200", async () => {
+  it("refreshes token for C10040 business responses even when http status is 200", async () => {
     const notifyError = vi.fn();
     const onAuthExpired = vi.fn();
+    let accessToken = "old-access-token";
+    let refreshed = false;
     const client = createRequestClient({
+      getAccessToken: () => accessToken,
+      getRefreshToken: () => "refresh-token",
+      setTokenPair: (tokens) => {
+        accessToken = tokens.accessToken ?? accessToken;
+      },
       notifyError,
       onAuthExpired,
-      adapter: createAdapter((config) => ({
-        config,
-        data: { code: "C10040", data: null },
-        headers: {},
-        status: 200,
-        statusText: "OK",
-      })),
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+
+        if (requestConfig.url === "/auth/refresh") {
+          refreshed = true;
+          return {
+            config: requestConfig,
+            data: {
+              code: "200",
+              data: {
+                tokenType: "Bearer",
+                accessToken: "new-access-token",
+                refreshToken: "new-refresh-token",
+                expiresIn: 3600,
+              },
+            },
+            headers: {},
+            status: 200,
+            statusText: "OK",
+          };
+        }
+
+        return {
+          config: requestConfig,
+          data:
+            requestConfig.headers.Authorization === "Bearer new-access-token"
+              ? { code: "200", data: { ok: true } }
+              : { code: "C10040", data: null },
+          headers: {},
+          status: 200,
+          statusText: "OK",
+        };
+      },
     });
 
-    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    await expect(client.get("/secure")).resolves.toEqual({ ok: true });
+    expect(refreshed).toBe(true);
     expect(notifyError).not.toHaveBeenCalled();
-    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+    expect(onAuthExpired).not.toHaveBeenCalled();
   });
 
   it("emits password-change event for C10013 from http 403 without auth expiry", async () => {
@@ -399,7 +473,7 @@ describe("request client", () => {
 
         if (requestConfig.url === "/secure" && requestConfig.headers.Authorization === "Bearer old-access-token") {
           throw createHttpError(requestConfig, {
-            code: "A0230",
+            code: "C10040",
             data: null,
             msg: "access token expired",
           });
@@ -480,7 +554,7 @@ describe("request client", () => {
 
         if (requestConfig.headers.Authorization === "Bearer old-access-token") {
           throw createHttpError(requestConfig, {
-            code: "A0230",
+            code: "C10040",
             data: null,
             msg: "access token expired",
           });
@@ -516,7 +590,7 @@ describe("request client", () => {
         if (requestConfig.url === "/secure") {
           secureAttempts += 1;
           throw createHttpError(requestConfig, {
-            code: "A0230",
+            code: "C10040",
             data: null,
             msg: "access token expired",
           });
@@ -524,6 +598,68 @@ describe("request client", () => {
 
         throw createHttpError(requestConfig, {
           code: "A0231",
+          data: null,
+          msg: "refresh token expired",
+        });
+      },
+    });
+
+    await expect(client.get("/secure")).rejects.toThrow("Token Invalid");
+    expect(secureAttempts).toBe(1);
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("deduplicates auth expiry notification when concurrent requests share a failed refresh", async () => {
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      getAccessToken: () => "old-access-token",
+      getRefreshToken: () => "refresh-token",
+      onAuthExpired,
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+
+        if (requestConfig.url === "/auth/refresh") {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          throw createHttpError(requestConfig, {
+            code: "C10040",
+            data: null,
+            msg: "refresh token expired",
+          });
+        }
+
+        throw createHttpError(requestConfig, {
+          code: "C10040",
+          data: null,
+          msg: "access token expired",
+        });
+      },
+    });
+
+    await expect(Promise.allSettled([client.get("/alpha"), client.get("/beta")])).resolves.toHaveLength(2);
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("expires auth when refresh endpoint returns C10040", async () => {
+    let secureAttempts = 0;
+    const onAuthExpired = vi.fn();
+    const client = createRequestClient({
+      getAccessToken: () => "old-access-token",
+      getRefreshToken: () => "refresh-token",
+      onAuthExpired,
+      adapter: async (config) => {
+        const requestConfig = config as InternalAxiosRequestConfig;
+
+        if (requestConfig.url === "/secure") {
+          secureAttempts += 1;
+          throw createHttpError(requestConfig, {
+            code: "C10040",
+            data: null,
+            msg: "access token expired",
+          });
+        }
+
+        throw createHttpError(requestConfig, {
+          code: "C10040",
           data: null,
           msg: "refresh token expired",
         });
@@ -546,7 +682,7 @@ describe("request client", () => {
         const requestConfig = config as InternalAxiosRequestConfig;
         seenUrls.push(requestConfig.url);
         throw createHttpError(requestConfig, {
-          code: "A0230",
+          code: "C10040",
           data: null,
           msg: "access token expired",
         });

@@ -44,9 +44,40 @@ describe("aigc uploads api", () => {
       client,
     );
 
-    expect(seen.url).toBe("/api/aigc/uploads/audio");
+    expect(seen.url).toBe("/uploads/audio");
     expect(seen.hasFileField).toBe(true);
     expect(result.url).toBe("https://oss.example.com/audio.mp3");
+  });
+
+  it("rejects audio uploads outside wav and mp3 before sending request", async () => {
+    let requestCount = 0;
+    const client = createRequestClient({
+      adapter: createAdapter((config) => {
+        requestCount += 1;
+
+        return {
+          config,
+          data: {
+            code: "200",
+            data: {
+              url: "https://oss.example.com/audio.flac",
+              objectKey: "aigc/audio/20260710/audio.flac",
+              originalFilename: "audio.flac",
+            },
+            msg: "success",
+          },
+          headers: {},
+          status: 200,
+          statusText: "OK",
+        };
+      }),
+    });
+
+    await expect(
+      uploadAudio(new File(["demo-audio"], "audio.flac", { type: "audio/flac" }), undefined, client),
+    ).rejects.toThrow("仅支持上传 wav、mp3 格式的音频文件");
+
+    expect(requestCount).toBe(0);
   });
 
   it("uploads image and video files to their own endpoints", async () => {
@@ -75,6 +106,6 @@ describe("aigc uploads api", () => {
     await uploadImage(new File(["demo-image"], "demo.png", { type: "image/png" }), undefined, client);
     await uploadVideo(new File(["demo-video"], "demo.mp4", { type: "video/mp4" }), undefined, client);
 
-    expect(seenUrls).toEqual(["/api/aigc/uploads/image", "/api/aigc/uploads/video"]);
+    expect(seenUrls).toEqual(["/uploads/image", "/uploads/video"]);
   });
 });

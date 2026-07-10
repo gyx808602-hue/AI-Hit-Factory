@@ -10,6 +10,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import type { CustomisedAudio } from "../../../api/aigc/customised-audios/types";
+import { AUDIO_UPLOAD_ACCEPT } from "../../../api/aigc/uploads";
 import { MetricCard } from "../../../shared/components/MetricCard";
 import { StatusPill } from "../../../shared/components/StatusPill";
 import type {
@@ -85,6 +86,61 @@ export function AudioFormModal({
   onSubmit: () => void;
 }) {
   const isCreateMode = mode === "create";
+  const audioFileSection = (
+    <div>
+      <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音频文件</div>
+      {values.url ? (
+        <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-[13px] text-[var(--text-primary)]">
+                {uploadedAudioName || "已上传音频"}
+              </div>
+              <div className="text-[12px] text-[var(--text-muted)]">已上传到素材服务</div>
+            </div>
+            <Button size="small" danger icon={<Trash2 size={12} />} onClick={onRemoveAudio}>
+              删除音频
+            </Button>
+          </div>
+          <audio className="w-full" controls src={values.url} data-testid="customised-audio-preview">
+            当前浏览器不支持音频预览
+          </audio>
+        </div>
+      ) : (
+        <Upload.Dragger
+          accept={AUDIO_UPLOAD_ACCEPT}
+          multiple={false}
+          showUploadList={false}
+          disabled={audioUploading}
+          beforeUpload={(file) => {
+            void onAudioUpload?.(file as File);
+            return Upload.LIST_IGNORE;
+          }}
+        >
+          <div className="py-5">
+            <UploadCloud size={28} className="mx-auto mb-2 text-[#1677FF]" />
+            <input
+              data-testid="customised-audio-upload-input"
+              type="file"
+              accept={AUDIO_UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  void onAudioUpload?.(file);
+                }
+              }}
+            />
+            <p className="text-[13px] text-[var(--text-secondary)]">
+              {audioUploading ? "音频上传中..." : "点击或拖拽上传音频"}
+            </p>
+            <p className="text-[12px] text-[var(--text-muted)]">上传成功后会自动写入音频地址</p>
+          </div>
+        </Upload.Dragger>
+      )}
+      {errors.url ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.url}</div> : null}
+    </div>
+  );
 
   return (
     <Modal
@@ -109,75 +165,7 @@ export function AudioFormModal({
           {errors.name ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.name}</div> : null}
         </div>
 
-        {isCreateMode ? (
-          <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音频文件</div>
-            {values.url ? (
-              <div className="space-y-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-[13px] text-[var(--text-primary)]">
-                      {uploadedAudioName || "已上传音频"}
-                    </div>
-                    <div className="text-[12px] text-[var(--text-muted)]">已上传到素材服务</div>
-                  </div>
-                  <Button size="small" danger icon={<Trash2 size={12} />} onClick={onRemoveAudio}>
-                    删除音频
-                  </Button>
-                </div>
-                <audio className="w-full" controls src={values.url} data-testid="customised-audio-preview">
-                  当前浏览器不支持音频预览
-                </audio>
-              </div>
-            ) : (
-              <Upload.Dragger
-                accept="audio/*"
-                multiple={false}
-                showUploadList={false}
-                disabled={audioUploading}
-                beforeUpload={(file) => {
-                  void onAudioUpload?.(file as File);
-                  return Upload.LIST_IGNORE;
-                }}
-              >
-                <div className="py-5">
-                  <UploadCloud size={28} className="mx-auto mb-2 text-[#1677FF]" />
-                  <input
-                    data-testid="customised-audio-upload-input"
-                    type="file"
-                    accept="audio/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        void onAudioUpload?.(file);
-                      }
-                    }}
-                  />
-                  <p className="text-[13px] text-[var(--text-secondary)]">
-                    {audioUploading ? "音频上传中..." : "点击或拖拽上传音频"}
-                  </p>
-                  <p className="text-[12px] text-[var(--text-muted)]">上传成功后会自动写入音频地址</p>
-                </div>
-              </Upload.Dragger>
-            )}
-            {errors.url ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.url}</div> : null}
-          </div>
-        ) : (
-          <div>
-            <div className="mb-2 text-[13px] text-[var(--text-secondary)]">音频地址</div>
-            <Input
-              placeholder="请输入音频地址"
-              value={values.url}
-              status={errors.url ? "error" : ""}
-              onChange={(event) => onChange({ ...values, url: event.target.value })}
-            />
-            {errors.url ? <div className="mt-1 text-[12px] text-[#EF4444]">{errors.url}</div> : null}
-            <div className="mt-3 rounded-lg border border-[var(--line-subtle)] bg-[var(--card-bg)] px-3 py-2 text-[12px] text-[var(--text-muted)]">
-              当前先提供编辑弹窗与数据回填，后续接入更新接口后可直接复用此表单。
-            </div>
-          </div>
-        )}
+        {audioFileSection}
       </div>
     </Modal>
   );

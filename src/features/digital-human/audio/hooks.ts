@@ -13,6 +13,7 @@ import type {
   CustomisedAudioQuery,
 } from "../../../api/aigc/customised-audios/types";
 import type { Id } from "../../../api/shared/types";
+import { useGuardedMutation } from "../../../shared/hooks/useGuardedMutation";
 
 export const customisedAudioQueryKeys = {
   all: () => ["customised-audios"] as const,
@@ -83,7 +84,7 @@ export function useCustomisedAudioDetail(id?: Id) {
 export function useCreateCustomisedAudioMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (payload: CustomisedAudioCreateRequest) => createCustomisedAudio(payload),
     onSuccess: async (createdAudio) => {
       queryClient.setQueryData(customisedAudioQueryKeys.detail(createdAudio.id), createdAudio);
@@ -91,13 +92,13 @@ export function useCreateCustomisedAudioMutation() {
         queryKey: customisedAudioQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useDeleteCustomisedAudioMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: async (id: Id) => {
       await deleteCustomisedAudio(id);
       return id;
@@ -110,17 +111,17 @@ export function useDeleteCustomisedAudioMutation() {
         queryKey: customisedAudioQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useRefreshCustomisedAudioMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (id: Id) => refreshCustomisedAudio(id),
     onSuccess: (nextAudio) => {
       queryClient.setQueryData(customisedAudioQueryKeys.detail(nextAudio.id), nextAudio);
       mergeCustomisedAudioIntoListCaches(queryClient, nextAudio);
     },
-  });
+  }));
 }

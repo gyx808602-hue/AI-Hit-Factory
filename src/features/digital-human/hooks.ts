@@ -19,6 +19,7 @@ import type {
   DigitalPersonQuery,
 } from "../../api/aigc/digital-persons/types";
 import type { Id } from "../../api/shared/types";
+import { useGuardedMutation } from "../../shared/hooks/useGuardedMutation";
 
 export const digitalHumanQueryKeys = {
   all: () => ["digital-humans"] as const,
@@ -88,7 +89,7 @@ export function useDigitalHumanDetail(id?: Id) {
 export function useCreateDigitalHumanMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (payload: DigitalPersonCreateRequest) => createDigitalPerson(payload),
     onSuccess: async (createdHuman) => {
       queryClient.setQueryData(digitalHumanQueryKeys.detail(createdHuman.id), createdHuman);
@@ -96,13 +97,13 @@ export function useCreateDigitalHumanMutation() {
         queryKey: digitalHumanQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useDeleteDigitalHumanMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: async (id: Id) => {
       await deleteDigitalPerson(id);
       return id;
@@ -115,17 +116,17 @@ export function useDeleteDigitalHumanMutation() {
         queryKey: digitalHumanQueryKeys.lists(),
       });
     },
-  });
+  }));
 }
 
 export function useRefreshDigitalHumanMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useGuardedMutation(useMutation({
     mutationFn: (id: Id) => refreshDigitalPerson(id),
     onSuccess: (nextHuman) => {
       queryClient.setQueryData(digitalHumanQueryKeys.detail(nextHuman.id), nextHuman);
       mergeDigitalHumanIntoListCaches(queryClient, nextHuman);
     },
-  });
+  }));
 }

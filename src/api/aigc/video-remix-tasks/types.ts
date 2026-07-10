@@ -20,6 +20,7 @@ export interface VideoRemixTaskForm {
   productInfo?: string;
   voiceoverScript?: string;
   direction?: string;
+  prompt?: string;
   generationDuration?: number;
 }
 
@@ -39,6 +40,13 @@ export interface VideoRemixTask {
   errReason?: string;
   targetVideoModel?: string;
   referenceVideoUrl?: string;
+  productImageUrls?: string[];
+  characterImageUrls?: string[];
+  audioUrl?: string;
+  productInfo?: string;
+  voiceoverScript?: string;
+  direction?: string;
+  prompt?: string;
   generatedPrompt?: string;
   promptProvider?: string;
   promptModel?: string;

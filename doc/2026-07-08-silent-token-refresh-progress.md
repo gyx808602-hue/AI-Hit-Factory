@@ -122,3 +122,49 @@
 - 结果：通过。
 - 已执行：`cmd /c openspec validate add-silent-token-refresh --strict`
 - 结果：通过，`Change 'add-silent-token-refresh' is valid`。
+
+---
+
+# 2026-07-10 C10040 触发码调整
+## 已完成
+- 已将普通业务请求 token 失效触发码调整为 `C10040`。
+- 普通接口返回 `C10040` 时会先尝试 refresh token，并在刷新成功后重放原请求。
+- 兼容 HTTP error 响应和 HTTP 200 业务响应两种 `C10040` 返回形式。
+- refresh 接口自身返回错误或 token 失效时，不再尝试二次刷新，统一触发重新登录流程。
+- 修复 `request.ts` 中历史乱码注释吞并代码导致的语法问题，并将登录过期提示抽为常量。
+
+## 当前判断
+- `C10040` 现在代表 access token 失效场景，会触发无感刷新。
+- refresh 接口失败代表 refresh token 不可用或服务端拒绝刷新，此时必须重新登录，不能重放原请求。
+
+## 下一步
+- 若后端 refresh 地址确认必须带 `/v1` 且 baseURL 未包含 `/v1`，需要把 `/auth/refresh` 改为 `/v1/auth/refresh`。
+
+## 验证结果
+- 已执行：`cmd /c npx vitest run --config vite.request-test.config.ts src/utils/request.test.ts`
+- 结果：通过，1 个测试文件、21 个测试用例全部通过。
+- 已执行：`cmd /c npm run typecheck`
+- 结果：通过。
+
+---
+
+# 2026-07-10 无感刷新健壮性复查
+## 已完成
+- 已复查无感刷新链路：普通接口 `C10040` 触发 refresh，refresh 成功后重放原请求。
+- 已确认 refresh 请求使用 `silentError` 和 `skipAuthRefresh`，避免刷新接口失败时出现重复错误提示或递归刷新。
+- 已新增登录过期通知去重：并发请求共享同一次失败 refresh 时，只触发一次 `auth:expired`。
+- 已让对外暴露的 `refreshToken()` API 同样携带 `silentError` 和 `skipAuthRefresh`，防止直接调用刷新接口失败后反向进入无感刷新链路。
+- 已补充测试覆盖并发 refresh 失败只触发一次重新登录、refresh API 配置完整性。
+
+## 当前判断
+- 当前实现对并发失效、刷新失败、refresh token 失效、二次重放失效、重复错误提示都有防护。
+- refresh 地址仍走统一前缀策略：代码中为 `/auth/refresh`，最终是否为 `/v1/auth/refresh` 取决于 `VITE_APP_BASE_API` 或 dev proxy 配置。
+
+## 下一步
+- 如果生产环境 `VITE_APP_BASE_API` 不包含 `/v1`，需要统一调整 API 前缀配置，而不是只在 refresh 里单独拼 `/v1`。
+
+## 验证结果
+- 已执行：`cmd /c npx vitest run --config vite.request-test.config.ts src/utils/request.test.ts src/api/system/auth/index.test.ts`
+- 结果：通过，2 个测试文件、24 个测试用例全部通过。
+- 已执行：`cmd /c npm run typecheck`
+- 结果：通过。

@@ -20,6 +20,7 @@ import {
   mapTextImageVideoFormValuesToCreatePayload,
 } from '../../features/text-image-video/form'
 import { PageShell } from '../../shared/components/PageShell'
+import { useGuardedMutation } from '../../shared/hooks/useGuardedMutation'
 
 type FormErrors = {
   topic?: string
@@ -37,7 +38,7 @@ export function ImageVideoPage() {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [errors, setErrors] = useState<FormErrors>({})
 
-  const createTaskMutation = useMutation({
+  const createTaskMutation = useGuardedMutation(useMutation({
     mutationFn: () =>
       createTextImageVideoTask(
         mapTextImageVideoFormValuesToCreatePayload(formValues),
@@ -45,9 +46,9 @@ export function ImageVideoPage() {
     onSuccess: (task) => {
       navigate(`/image-video/tasks/${task.id}`)
     },
-  })
+  }))
 
-  const generatePromptMutation = useMutation({
+  const generatePromptMutation = useGuardedMutation(useMutation({
     mutationFn: () =>
       generateTextImageVideoPrompt({
         topic: formValues.topic.trim(),
@@ -71,10 +72,11 @@ export function ImageVideoPage() {
         promptGeneration: error.message,
       }))
     },
-  })
+  }))
 
-  const uploadImageMutation = useMutation({
+  const uploadImageMutation = useGuardedMutation(useMutation({
     mutationFn: async (files: File[]) =>
+      // 一次选择多个文件时允许批量并发上传；guard 只防止同一个上传动作被重复触发。
       Promise.all(files.map((file) => uploadImage(file))),
     onSuccess: (results) => {
       setUploadedImages((current) => [
@@ -94,7 +96,7 @@ export function ImageVideoPage() {
         promptGeneration: undefined,
       }))
     },
-  })
+  }))
 
   const promptLength = useMemo(
     () => formValues.prompt.trim().length,

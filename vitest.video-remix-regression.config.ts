@@ -9,7 +9,6 @@ export default {
       "src/build/manualChunks.test.ts",
       "src/pages/content/ViralRemixPage.test.tsx",
       "src/pages/content/VideoRemixTasksPage.test.tsx",
-      "src/pages/content/VideoRemixTaskDetailPage.test.tsx",
       "src/features/video-remix/status.test.ts",
       "src/features/video-remix/form.test.ts",
       "src/app/router/routeRegistry.test.ts",
